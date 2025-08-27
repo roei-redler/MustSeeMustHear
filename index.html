@@ -1313,7 +1313,6 @@ function extractYouTubeId(url) {
                 const { data, error } = await supabase
                     .from('user_content')
                     .select('*')
-                    .or(`user_id.eq.${currentUser.id},assigned_to.eq.${currentUser.id}`)
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
