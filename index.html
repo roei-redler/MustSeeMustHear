@@ -279,6 +279,17 @@
             box-shadow: var(--shadow-lg);
             position: relative;
         }
+
+        .watch-option-modal {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
         
         .modal-close {
             position: absolute;
@@ -375,11 +386,16 @@
             border-color: var(--accent-color);
         }
         
-        .user-selector {
+        /* Multi-select User Selector */
+        .user-multiselect {
             margin-bottom: 1.5rem;
         }
-        
-        .user-select {
+
+        .multiselect-dropdown {
+            position: relative;
+        }
+
+        .multiselect-button {
             width: 100%;
             padding: 1rem;
             background: var(--secondary-bg);
@@ -389,18 +405,63 @@
             font-size: 1rem;
             cursor: pointer;
             transition: all 0.3s ease;
+            text-align: right;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        
-        .user-select:focus {
+
+        .multiselect-button:focus {
             outline: none;
             border-color: var(--accent-color);
             background: rgba(255, 255, 255, 0.05);
         }
-        
-        .user-select option {
-            background: var(--secondary-bg);
+
+        .multiselect-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1001;
+            display: none;
+            margin-top: 0.5rem;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .multiselect-dropdown-menu.active {
+            display: block;
+        }
+
+        .multiselect-option {
+            padding: 0.8rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .multiselect-option:hover {
+            background: var(--hover-bg);
+        }
+
+        .multiselect-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-color);
+        }
+
+        .selected-users {
             color: var(--text-primary);
-            padding: 0.5rem;
+        }
+
+        .selected-users.placeholder {
+            color: var(--text-secondary);
         }
         
         .video-preview {
@@ -466,6 +527,38 @@
         .btn-add-content:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        /* Watch Options Modal */
+        .watch-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .watch-option-btn {
+            padding: 1rem 1.5rem;
+            background: var(--secondary-bg);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1rem;
+        }
+
+        .watch-option-btn:hover {
+            background: var(--hover-bg);
+            border-color: var(--accent-color);
+        }
+
+        .watch-option-btn i {
+            font-size: 1.2rem;
+            color: var(--accent-color);
         }
         
         /* Tabs */
@@ -732,15 +825,26 @@
             background: var(--secondary-bg);
             border-radius: 8px;
             font-size: 0.85rem;
+            flex-wrap: wrap;
         }
         
         .assignment-label {
             color: var(--text-secondary);
         }
         
+        .assignment-users {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+
         .assignment-user {
+            background: rgba(102, 126, 234, 0.2);
             color: var(--info-color);
             font-weight: 500;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
         }
         
         .card-footer {
@@ -986,6 +1090,12 @@
                     <button class="sub-tab active" data-filter="all" onclick="switchSubTab('all')">
                         <i class="fas fa-border-all"></i> הכל
                     </button>
+                    <button class="sub-tab" data-filter="assigned_to_me" onclick="switchSubTab('assigned_to_me')">
+                        <i class="fas fa-user"></i> מוקצה אליי
+                    </button>
+                    <button class="sub-tab" data-filter="assigned_to_others" onclick="switchSubTab('assigned_to_others')">
+                        <i class="fas fa-users"></i> מוקצה לאחרים
+                    </button>
                     <button class="sub-tab" data-filter="movie" onclick="switchSubTab('movie')">
                         <i class="fas fa-film"></i> סרטים
                     </button>
@@ -1031,6 +1141,14 @@
                        id="youtubeUrl" 
                        placeholder="הדבק כאן קישור מ-YouTube (לדוגמה: https://www.youtube.com/watch?v=...)">
             </div>
+
+            <div class="input-group">
+                <label class="input-label">קישור לצפייה ישירה</label>
+                <input type="url" 
+                       class="youtube-input" 
+                       id="streamingUrl" 
+                       placeholder="קישור לאתר סטרימינג או צפייה ישירה (אופציונלי)">
+            </div>
             
             <div class="input-group">
                 <label class="input-label">סוג תוכן</label>
@@ -1047,11 +1165,17 @@
                 </div>
             </div>
             
-            <div class="user-selector">
-                <label class="input-label">הקצה למשתמש</label>
-                <select class="user-select" id="assignToUser">
-                    <option value="">לעצמי</option>
-                </select>
+            <div class="user-multiselect">
+                <label class="input-label">הקצה למשתמשים</label>
+                <div class="multiselect-dropdown">
+                    <button type="button" class="multiselect-button" onclick="toggleUserDropdown()">
+                        <span class="selected-users placeholder">בחר משתמשים (אופציונלי)</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="multiselect-dropdown-menu" id="userDropdownMenu">
+                        <!-- Options will be populated by JavaScript -->
+                    </div>
+                </div>
             </div>
             
             <div class="video-preview" id="videoPreview">
@@ -1068,6 +1192,38 @@
             <button class="btn-add-content" onclick="addContent()" id="addContentBtn">
                 <i class="fas fa-plus"></i> הוסף לרשימה
             </button>
+        </div>
+    </div>
+
+    <!-- Watch Options Modal -->
+    <div class="modal-overlay" id="watchModalOverlay" onclick="closeWatchModal(event)">
+        <div class="watch-option-modal" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeWatchModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <h2 class="section-title">
+                <i class="fas fa-play-circle"></i>
+                בחר אמצעי צפייה
+            </h2>
+            
+            <div class="watch-options">
+                <button class="watch-option-btn" onclick="watchOnYouTube()">
+                    <i class="fab fa-youtube"></i>
+                    <div>
+                        <div>צפה ב-YouTube</div>
+                        <small style="color: var(--text-secondary);">פתח בכרטיסיה חדשה</small>
+                    </div>
+                </button>
+                
+                <button class="watch-option-btn" id="streamingOption" onclick="watchOnStreaming()" style="display: none;">
+                    <i class="fas fa-external-link-alt"></i>
+                    <div>
+                        <div>צפה באתר סטרימינג</div>
+                        <small style="color: var(--text-secondary);">פתח בכרטיסיה חדשה</small>
+                    </div>
+                </button>
+            </div>
         </div>
     </div>
     
@@ -1090,8 +1246,10 @@
         let currentFilter = 'all';
         let selectedContentType = 'movie';
         let currentVideoData = null;
+        let selectedUsers = [];
         let allContent = [];
         let allUsers = [];
+        let currentContentForWatch = null;
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1139,18 +1297,149 @@
             document.getElementById('addModalOverlay').classList.add('active');
         }
         
-        function closeAddModal(event) {
-            if (event && event.target !== event.currentTarget) return;
-            document.getElementById('addModalOverlay').classList.remove('active');
-            // Clear form
-            document.getElementById('youtubeUrl').value = '';
-            document.getElementById('assignToUser').value = '';
-            hideVideoPreview();
-            // Reset content type to movie
-            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
-            selectedContentType = 'movie';
+function closeAddModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('addModalOverlay').classList.remove('active');
+    // Clear form
+    document.getElementById('youtubeUrl').value = '';
+    document.getElementById('streamingUrl').value = '';
+    selectedUsers = [];
+    updateSelectedUsersDisplay();
+    updateUserCheckboxes();
+    hideVideoPreview();
+    // Reset content type to movie
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
+    selectedContentType = 'movie';
+}
+
+        function openWatchModal(content) {
+            currentContentForWatch = content;
+            
+            // Show/hide streaming option based on availability
+            const streamingOption = document.getElementById('streamingOption');
+            if (content.streaming_url && content.streaming_url.trim() !== '') {
+                streamingOption.style.display = 'flex';
+            } else {
+                streamingOption.style.display = 'none';
+            }
+            
+            document.getElementById('watchModalOverlay').classList.add('active');
         }
+        
+        function closeWatchModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('watchModalOverlay').classList.remove('active');
+            currentContentForWatch = null;
+        }
+
+        function watchOnYouTube() {
+            if (currentContentForWatch && currentContentForWatch.youtube_url) {
+                window.open(currentContentForWatch.youtube_url, '_blank');
+            }
+            closeWatchModal();
+        }
+
+        function watchOnStreaming() {
+            if (currentContentForWatch && currentContentForWatch.streaming_url) {
+                window.open(currentContentForWatch.streaming_url, '_blank');
+            }
+            closeWatchModal();
+        }
+
+        // Multi-select User Dropdown Functions
+        function toggleUserDropdown() {
+            const menu = document.getElementById('userDropdownMenu');
+            menu.classList.toggle('active');
+        }
+
+function updateSelectedUsersDisplay() {
+    const displayElement = document.querySelector('.selected-users');
+    
+    if (selectedUsers.length === 0) {
+        displayElement.textContent = 'בחר משתמשים (אופציונלי)';
+        displayElement.classList.add('placeholder');
+        return;
+    }
+    
+    // Check if shared viewing is selected
+    if (selectedUsers.includes('shared_viewing')) {
+        displayElement.textContent = 'צפייה משותפת (כולם)';
+        displayElement.classList.remove('placeholder');
+        return;
+    }
+    
+    // Build display text for individual selections
+    const displayNames = [];
+    
+    selectedUsers.forEach(userId => {
+        if (userId === 'self') {
+            displayNames.push('אליי');
+        } else {
+            const user = allUsers.find(u => u.id === userId);
+            if (user) {
+                displayNames.push(user.username || user.full_name || 'משתמש');
+            }
+        }
+    });
+    
+    displayElement.textContent = displayNames.join(', ');
+    displayElement.classList.remove('placeholder');
+}
+
+function toggleUserSelection(userId) {
+    // Clear shared viewing selection if individual user is selected
+    if (userId !== 'shared_viewing') {
+        const sharedIndex = selectedUsers.indexOf('shared_viewing');
+        if (sharedIndex !== -1) {
+            selectedUsers.splice(sharedIndex, 1);
+        }
+    }
+    
+    const index = selectedUsers.indexOf(userId);
+    if (index === -1) {
+        selectedUsers.push(userId);
+    } else {
+        selectedUsers.splice(index, 1);
+    }
+    
+    updateSelectedUsersDisplay();
+    updateUserCheckboxes();
+}
+function selectSharedViewing() {
+    const isCurrentlySelected = selectedUsers.includes('shared_viewing');
+    
+    if (isCurrentlySelected) {
+        // Deselect shared viewing
+        selectedUsers = [];
+    } else {
+        // Select all users for shared viewing
+        selectedUsers = ['self', 'shared_viewing'];
+        allUsers.forEach(user => {
+            if (user.id !== currentUser.id) {
+                selectedUsers.push(user.id);
+            }
+        });
+    }
+    
+    updateSelectedUsersDisplay();
+    updateUserCheckboxes();
+}
+
+function updateUserCheckboxes() {
+    const checkboxes = document.querySelectorAll('.multiselect-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectedUsers.includes(checkbox.value);
+    });
+}
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.multiselect-dropdown');
+            if (!dropdown.contains(event.target)) {
+                document.getElementById('userDropdownMenu').classList.remove('active');
+            }
+        });
         
         // Event Listeners Setup
         function setupEventListeners() {
@@ -1177,40 +1466,40 @@
                 }
             });
             
-// Register Form
-document.getElementById('registerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('registerEmail').value;
-    const password = document.getElementById('registerPassword').value;
-    const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
-    const fullName = document.getElementById('registerName').value;
-    
-    if (password !== passwordConfirm) {
-        showToast('הסיסמאות אינן תואמות', 'error');
-        return;
-    }
-    
-    try {
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    full_name: fullName,
-                    username: email.split('@')[0]
+            // Register Form
+            document.getElementById('registerForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('registerEmail').value;
+                const password = document.getElementById('registerPassword').value;
+                const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+                const fullName = document.getElementById('registerName').value;
+                
+                if (password !== passwordConfirm) {
+                    showToast('הסיסמאות אינן תואמות', 'error');
+                    return;
                 }
-            }
-        });
-        
-        if (error) throw error;
-        
-        showToast('נרשמת בהצלחה! אנא אמת את כתובת האימייל', 'success');
-        showLogin();
-        
-    } catch (error) {
-        showToast(error.message || 'שגיאה בהרשמה', 'error');
-    }
-});
+                
+                try {
+                    const { data, error } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: {
+                                full_name: fullName,
+                                username: email.split('@')[0]
+                            }
+                        }
+                    });
+                    
+                    if (error) throw error;
+                    
+                    showToast('נרשמת בהצלחה! אנא אמת את כתובת האימייל', 'success');
+                    showLogin();
+                    
+                } catch (error) {
+                    showToast(error.message || 'שגיאה בהרשמה', 'error');
+                }
+            });
             
             // YouTube URL Input
             document.getElementById('youtubeUrl').addEventListener('input', debounce(async (e) => {
@@ -1235,6 +1524,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     closeAddModal();
+                    closeWatchModal();
                 }
             });
         }
@@ -1247,11 +1537,9 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             showToast('התנתקת בהצלחה', 'success');
         }
         
-
-// Load All Users - CORRECTED VERSION
+        // Load All Users - CORRECTED VERSION
 async function loadAllUsers() {
     try {
-        // Query the public.user_profiles table (without email since it's not in this table)
         const { data, error } = await supabase
             .from('user_profiles')
             .select('id, username, full_name');
@@ -1260,17 +1548,51 @@ async function loadAllUsers() {
         
         allUsers = data || [];
         
-        const userSelect = document.getElementById('assignToUser');
-        userSelect.innerHTML = '<option value="">לעצמי</option>';
+        // Populate the multi-select dropdown
+        const userDropdownMenu = document.getElementById('userDropdownMenu');
+        userDropdownMenu.innerHTML = '';
         
+        // Add "אליי" option (current user)
+        const selfOption = document.createElement('div');
+        selfOption.className = 'multiselect-option';
+        selfOption.onclick = () => toggleUserSelection('self');
+        selfOption.innerHTML = `
+            <input type="checkbox" class="multiselect-checkbox" value="self">
+            <span>אליי</span>
+        `;
+        userDropdownMenu.appendChild(selfOption);
+        
+        // Add other users
         allUsers.forEach(user => {
             if (user.id !== currentUser.id) {
-                const option = document.createElement('option');
-                option.value = user.id;
-                option.textContent = user.username || 'משתמש';
-                userSelect.appendChild(option);
+                const option = document.createElement('div');
+                option.className = 'multiselect-option';
+                option.onclick = () => toggleUserSelection(user.id);
+                
+                option.innerHTML = `
+                    <input type="checkbox" class="multiselect-checkbox" value="${user.id}">
+                    <span>${user.username || user.full_name || 'משתמש'}</span>
+                `;
+                
+                userDropdownMenu.appendChild(option);
             }
         });
+        
+        // Add separator
+        const separator = document.createElement('div');
+        separator.style.cssText = 'height: 1px; background: var(--border-color); margin: 0.5rem 0;';
+        userDropdownMenu.appendChild(separator);
+        
+        // Add "צפייה משותפת" option
+        const sharedOption = document.createElement('div');
+        sharedOption.className = 'multiselect-option';
+        sharedOption.style.cssText = 'background: rgba(102, 126, 234, 0.1); font-weight: 500;';
+        sharedOption.onclick = () => selectSharedViewing();
+        sharedOption.innerHTML = `
+            <input type="checkbox" class="multiselect-checkbox" value="shared_viewing" style="accent-color: var(--info-color);">
+            <span style="color: var(--info-color);">צפייה משותפת (כולם)</span>
+        `;
+        userDropdownMenu.appendChild(sharedOption);
         
     } catch (error) {
         console.error('Error loading users:', error);
@@ -1364,58 +1686,90 @@ async function loadAllUsers() {
         }
         
         // Content Management
-        async function addContent() {
-            if (!currentVideoData) {
-                showToast('אנא הדבק קישור YouTube תקין', 'error');
-                return;
-            }
+async function addContent() {
+    if (!currentVideoData) {
+        showToast('אנא הדבק קישור YouTube תקין', 'error');
+        return;
+    }
+    
+    const streamingUrl = document.getElementById('streamingUrl').value.trim();
+    
+    try {
+        const contentData = {
+            user_id: currentUser.id,
+            ...currentVideoData,
+            streaming_url: streamingUrl || null,
+            content_type: selectedContentType,
+            status: 'to_complete',
+            added_by_username: currentUser.email.split('@')[0],
+            added_by_avatar: currentUser.user_metadata?.avatar_url || null
+        };
+        
+        // Handle user assignments
+        if (selectedUsers.length > 0) {
+            // Convert selected users to actual user IDs
+            const actualUserIds = [];
+            const actualUsernames = [];
             
-            const assignToUserId = document.getElementById('assignToUser').value;
-            let assignedUser = null;
-            
-            if (assignToUserId) {
-                assignedUser = allUsers.find(u => u.id === assignToUserId);
-            }
-            
-            try {
-                const contentData = {
-                    user_id: currentUser.id,
-                    ...currentVideoData,
-                    content_type: selectedContentType,
-                    status: 'to_complete',
-                    added_by_username: currentUser.email.split('@')[0],
-                    added_by_avatar: currentUser.user_metadata?.avatar_url || null
-                };
-                
-                if (assignedUser) {
-                    contentData.assigned_to = assignedUser.id;
-                    contentData.assigned_to_username = assignedUser.username || assignedUser.email.split('@')[0];
-                    contentData.assigned_to_avatar = assignedUser.avatar_url || null;
-                }
-                
-                const { data, error } = await supabase
-                    .from('user_content')
-                    .insert(contentData)
-                    .select();
-                
-                if (error) {
-                    if (error.code === '23505') {
-                        showToast('תוכן זה כבר קיים ברשימה', 'error');
-                    } else {
-                        throw error;
+            selectedUsers.forEach(selection => {
+                if (selection === 'self') {
+                    actualUserIds.push(currentUser.id);
+                    actualUsernames.push('אליי');
+                } else if (selection !== 'shared_viewing') {
+                    // Regular user selection
+                    actualUserIds.push(selection);
+                    const user = allUsers.find(u => u.id === selection);
+                    if (user) {
+                        actualUsernames.push(user.username || user.full_name || 'משתמש');
                     }
-                    return;
                 }
-                
-                showToast('התוכן נוסף בהצלחה!', 'success');
-                closeAddModal();
-                await loadContent();
-                
-            } catch (error) {
-                console.error('Error adding content:', error);
-                showToast('שגיאה בהוספת התוכן', 'error');
+            });
+            
+            if (actualUserIds.length > 0) {
+                contentData.assigned_to = JSON.stringify(actualUserIds);
+                contentData.assigned_to_username = JSON.stringify(actualUsernames);
             }
         }
+        
+        const { data, error } = await supabase
+            .from('user_content')
+            .insert(contentData)
+            .select();
+        
+        if (error) {
+            if (error.code === '23505') {
+                showToast('תוכן זה כבר קיים ברשימה', 'error');
+            } else {
+                throw error;
+            }
+            return;
+        }
+        
+        showToast('התוכן נוסף בהצלחה!', 'success');
+        closeAddModal();
+        await loadContent();
+        
+    } catch (error) {
+        console.error('Error adding content:', error);
+        showToast('שגיאה בהוספת התוכן', 'error');
+    }
+}
+
+// Helper function for parsing assigned users
+function getAssignedUsers(item) {
+    if (!item.assigned_to) {
+        return { userIds: [], usernames: [] };
+    }
+    
+    try {
+        const userIds = JSON.parse(item.assigned_to);
+        const usernames = item.assigned_to_username ? JSON.parse(item.assigned_to_username) : [];
+        return { userIds, usernames };
+    } catch (error) {
+        console.error('Error parsing assigned users:', error);
+        return { userIds: [], usernames: [] };
+    }
+}
         
         async function loadContent() {
             try {
@@ -1444,15 +1798,27 @@ async function loadAllUsers() {
             document.getElementById('completedBadge').textContent = completed;
         }
         
-        function filterContent() {
-            let filtered = allContent.filter(item => item.status === currentStatus);
-            
-            if (currentFilter !== 'all') {
-                filtered = filtered.filter(item => item.content_type === currentFilter);
-            }
-            
-            renderContent(filtered);
-        }
+function filterContent() {
+    let filtered = allContent.filter(item => item.status === currentStatus);
+    
+    // Apply assignment filters
+    if (currentFilter === 'assigned_to_me') {
+        filtered = filtered.filter(item => {
+            const assignments = getAssignedUsers(item);
+            return assignments.userIds.includes(currentUser.id);
+        });
+    } else if (currentFilter === 'assigned_to_others') {
+        filtered = filtered.filter(item => {
+            const assignments = getAssignedUsers(item);
+            return assignments.userIds.length > 0 && !assignments.userIds.includes(currentUser.id);
+        });
+    } else if (currentFilter !== 'all') {
+        // Content type filters
+        filtered = filtered.filter(item => item.content_type === currentFilter);
+    }
+    
+    renderContent(filtered);
+}
         
         function renderContent(items) {
             const grid = document.getElementById('contentGrid');
@@ -1476,6 +1842,36 @@ async function loadAllUsers() {
                 const typeIcon = getTypeIcon(item.content_type);
                 const typeName = getTypeName(item.content_type);
                 
+                // Parse assigned users
+                let assignedUsersHtml = '';
+                if (item.assigned_to) {
+                    try {
+                        const assignedUsers = JSON.parse(item.assigned_to_username || '[]');
+                        if (assignedUsers.length > 0) {
+                            const userTags = assignedUsers.map(username => 
+                                `<span class="assignment-user">${username}</span>`
+                            ).join('');
+                            
+                            assignedUsersHtml = `
+                                <div class="card-assignment">
+                                    <span class="assignment-label">מוקצה ל:</span>
+                                    <div class="assignment-users">${userTags}</div>
+                                </div>
+                            `;
+                        }
+                    } catch {
+                        // Fallback for old format
+                        if (item.assigned_to_username) {
+                            assignedUsersHtml = `
+                                <div class="card-assignment">
+                                    <span class="assignment-label">מוקצה ל:</span>
+                                    <span class="assignment-user">${item.assigned_to_username}</span>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                
                 return `
                     <div class="content-card">
                         <div class="card-actions">
@@ -1493,7 +1889,7 @@ async function loadAllUsers() {
                             </button>
                         </div>
                         
-                        <div class="card-thumbnail-wrapper" onclick="window.open('${item.youtube_url}', '_blank')">
+                        <div class="card-thumbnail-wrapper" onclick="handleThumbnailClick(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                             <img class="card-thumbnail" src="${item.thumbnail_url}" alt="${item.title}">
                             <div class="play-overlay">
                                 <div class="play-icon">
@@ -1511,12 +1907,7 @@ async function loadAllUsers() {
                                     </span>
                                     <span class="card-channel">${item.channel_name || ''}</span>
                                 </div>
-                                ${item.assigned_to ? `
-                                    <div class="card-assignment">
-                                        <span class="assignment-label">מוקצה ל:</span>
-                                        <span class="assignment-user">${item.assigned_to_username || 'משתמש'}</span>
-                                    </div>
-                                ` : ''}
+                                ${assignedUsersHtml}
                             </div>
                         </div>
                         
@@ -1532,6 +1923,16 @@ async function loadAllUsers() {
                     </div>
                 `;
             }).join('');
+        }
+
+        function handleThumbnailClick(content) {
+            if (content.streaming_url && content.streaming_url.trim() !== '') {
+                // Show options modal if both YouTube and streaming URLs are available
+                openWatchModal(content);
+            } else {
+                // Only YouTube URL available, open directly
+                window.open(content.youtube_url, '_blank');
+            }
         }
         
         function getTypeIcon(type) {
@@ -1608,7 +2009,6 @@ async function loadAllUsers() {
             }
         }
         
-        // FIXED: Remove user restriction for deletion
         async function deleteContent(contentId) {
             if (!confirm('האם אתה בטוח שברצונך למחוק תוכן זה?')) return;
             
@@ -1617,7 +2017,6 @@ async function loadAllUsers() {
                     .from('user_content')
                     .delete()
                     .eq('id', contentId);
-                // Removed .eq('user_id', currentUser.id) to allow any user to delete any content
                 
                 if (error) throw error;
                 
