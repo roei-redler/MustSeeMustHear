@@ -40,6 +40,64 @@
             min-height: 100vh;
             direction: rtl;
         }
+
+        /* Tab Groups */
+        .tab-group {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-group-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-left: 1rem;
+            white-space: nowrap;
+        }
+
+        .assignment-tabs {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .content-type-tabs .tab-group-label {
+            color: var(--accent-color);
+        }
+
+        /* Filter status indicator */
+        .filter-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            color: var(--info-color);
+            font-size: 0.9rem;
+        }
+
+        .filter-status.hidden {
+            display: none;
+        }
+
+        /* Visual indication for active combined filters */
+        .tab-group.assignment-tabs .sub-tab.active:not([data-filter="all"])::before,
+        .tab-group.content-type-tabs .sub-tab.active:not([data-filter="all"])::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            background: var(--success-color);
+            border-radius: 50%;
+            border: 2px solid var(--card-bg);
+        }
         
         /* Auth Container */
         .auth-wrapper {
@@ -626,12 +684,16 @@
         
         .sub-tabs {
             display: flex;
-            gap: 0.8rem;
+            flex-direction: column;
+            gap: 1rem;
             margin-bottom: 2rem;
-            flex-wrap: wrap;
         }
         
         .sub-tab {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
             padding: 0.6rem 1.5rem;
             background: var(--secondary-bg);
             border: 1px solid var(--border-color);
@@ -640,9 +702,6 @@
             cursor: pointer;
             transition: all 0.3s ease;
             font-size: 0.95rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
         }
         
         .sub-tab:hover {
@@ -654,6 +713,35 @@
             background: var(--accent-color);
             color: white;
             border-color: var(--accent-color);
+        }
+
+        /* Sub-tab badge styling */
+        .sub-tab .tab-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-secondary);
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 0;
+        }
+
+        .sub-tab.active .tab-badge {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .sub-tab i.fa-user-friends {
+            color: var(--info-color);
+        }
+
+        .sub-tab.active i.fa-user-friends {
+            color: white;
         }
         
         /* Content Grid */
@@ -817,13 +905,7 @@
             color: var(--text-secondary);
             font-size: 0.85rem;
         }
-        .sub-tab i.fa-user-friends {
-    color: var(--info-color);
-}
-
-.sub-tab.active i.fa-user-friends {
-    color: white;
-}
+        
         .card-assignment {
             display: flex;
             align-items: center;
@@ -971,7 +1053,7 @@
             border-left: 4px solid var(--info-color);
         }
         
-        /* Responsive */
+        /* Responsive design for tab groups */
         @media (max-width: 768px) {
             .content-grid {
                 grid-template-columns: 1fr;
@@ -986,9 +1068,19 @@
                 white-space: nowrap;
             }
             
-            .sub-tabs {
-                overflow-x: auto;
-                white-space: nowrap;
+            .tab-group {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .tab-group-label {
+                margin-right: 0;
+                margin-bottom: 0.5rem;
+            }
+            
+            .tab-group .sub-tab {
+                margin-bottom: 0.5rem;
             }
             
             .add-content-modal {
@@ -1093,30 +1185,55 @@
                     </button>
                 </div>
                 
-<div class="sub-tabs">
-    <button class="sub-tab active" data-filter="all" onclick="switchSubTab('all')">
-        <i class="fas fa-border-all"></i> הכל
-    </button>
-    <button class="sub-tab" data-filter="assigned_to_me" onclick="switchSubTab('assigned_to_me')">
-        <i class="fas fa-user"></i> מוקצה אליי
-    </button>
-    <button class="sub-tab" data-filter="assigned_to_others" onclick="switchSubTab('assigned_to_others')">
-        <i class="fas fa-users"></i> מוקצה לאחרים
-    </button>
-    <!-- NEW: Add shared viewing tab -->
-    <button class="sub-tab" data-filter="shared_viewing" onclick="switchSubTab('shared_viewing')">
-        <i class="fas fa-user-friends"></i> משותף
-    </button>
-    <button class="sub-tab" data-filter="movie" onclick="switchSubTab('movie')">
-        <i class="fas fa-film"></i> סרטים
-    </button>
-    <button class="sub-tab" data-filter="series" onclick="switchSubTab('series')">
-        <i class="fas fa-tv"></i> סדרות
-    </button>
-    <button class="sub-tab" data-filter="music" onclick="switchSubTab('music')">
-        <i class="fas fa-music"></i> מוזיקה
-    </button>
-</div>
+                <!-- Filter Status Indicator -->
+                <div class="filter-status hidden" id="filterStatus">
+                    <i class="fas fa-filter"></i>
+                    <span id="filterStatusText">סינון פעיל</span>
+                </div>
+
+                <div class="sub-tabs">
+                    <!-- Assignment Categories -->
+                    <div class="tab-group assignment-tabs">
+                        <span class="tab-group-label">הקצאה:</span>
+                        <button class="sub-tab active" data-filter="all" onclick="switchSubTab('all')">
+                            <i class="fas fa-border-all"></i> הכל
+                            <span class="tab-badge" id="allBadge">0</span>
+                        </button>
+                        <button class="sub-tab" data-filter="assigned_to_me" onclick="switchSubTab('assigned_to_me')">
+                            <i class="fas fa-user"></i> מוקצה אליי
+                            <span class="tab-badge" id="assignedToMeBadge">0</span>
+                        </button>
+                        <button class="sub-tab" data-filter="assigned_to_others" onclick="switchSubTab('assigned_to_others')">
+                            <i class="fas fa-users"></i> מוקצה לשני
+                            <span class="tab-badge" id="assignedToOthersBadge">0</span>
+                        </button>
+                        <button class="sub-tab" data-filter="shared_viewing" onclick="switchSubTab('shared_viewing')">
+                            <i class="fas fa-user-friends"></i> משותף
+                            <span class="tab-badge" id="sharedViewingBadge">0</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Content Type Categories -->
+                    <div class="tab-group content-type-tabs">
+                        <span class="tab-group-label">סוג תוכן:</span>
+                        <button class="sub-tab active" data-filter="all" onclick="switchSubTab('all')">
+                            <i class="fas fa-th"></i> כל הסוגים
+                            <span class="tab-badge" id="allContentTypesBadge">0</span>
+                        </button>
+                        <button class="sub-tab" data-filter="movie" onclick="switchSubTab('movie')">
+                            <i class="fas fa-film"></i> סרטים
+                            <span class="tab-badge" id="movieBadge">0</span>
+                        </button>
+                        <button class="sub-tab" data-filter="series" onclick="switchSubTab('series')">
+                            <i class="fas fa-tv"></i> סדרות
+                            <span class="tab-badge" id="seriesBadge">0</span>
+                        </button>
+                        <button class="sub-tab" data-filter="music" onclick="switchSubTab('music')">
+                            <i class="fas fa-music"></i> מוזיקה
+                            <span class="tab-badge" id="musicBadge">0</span>
+                        </button>
+                    </div>
+                </div>
                 
                 <!-- Content Grid -->
                 <div class="content-grid" id="contentGrid">
@@ -1251,10 +1368,11 @@
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        // State
+        // Updated State - separate assignment and content type filters
         let currentUser = null;
         let currentStatus = 'to_complete';
-        let currentFilter = 'all';
+        let currentAssignmentFilter = 'all';
+        let currentContentTypeFilter = 'all';
         let selectedContentType = 'movie';
         let currentVideoData = null;
         let selectedUsers = [];
@@ -1308,21 +1426,21 @@
             document.getElementById('addModalOverlay').classList.add('active');
         }
         
-function closeAddModal(event) {
-    if (event && event.target !== event.currentTarget) return;
-    document.getElementById('addModalOverlay').classList.remove('active');
-    // Clear form
-    document.getElementById('youtubeUrl').value = '';
-    document.getElementById('streamingUrl').value = '';
-    selectedUsers = [];
-    updateSelectedUsersDisplay();
-    updateUserCheckboxes();
-    hideVideoPreview();
-    // Reset content type to movie
-    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
-    selectedContentType = 'movie';
-}
+        function closeAddModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('addModalOverlay').classList.remove('active');
+            // Clear form
+            document.getElementById('youtubeUrl').value = '';
+            document.getElementById('streamingUrl').value = '';
+            selectedUsers = [];
+            updateSelectedUsersDisplay();
+            updateUserCheckboxes();
+            hideVideoPreview();
+            // Reset content type to movie
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
+            selectedContentType = 'movie';
+        }
 
         function openWatchModal(content) {
             currentContentForWatch = content;
@@ -1364,85 +1482,86 @@ function closeAddModal(event) {
             menu.classList.toggle('active');
         }
 
-function updateSelectedUsersDisplay() {
-    const displayElement = document.querySelector('.selected-users');
-    
-    if (selectedUsers.length === 0) {
-        displayElement.textContent = 'בחר משתמשים (אופציונלי)';
-        displayElement.classList.add('placeholder');
-        return;
-    }
-    
-    // Check if shared viewing is selected
-    if (selectedUsers.includes('shared_viewing')) {
-        displayElement.textContent = 'צפייה משותפת (כולם)';
-        displayElement.classList.remove('placeholder');
-        return;
-    }
-    
-    // Build display text for individual selections
-    const displayNames = [];
-    
-    selectedUsers.forEach(userId => {
-        if (userId === 'self') {
-            displayNames.push('אליי');
-        } else {
-            const user = allUsers.find(u => u.id === userId);
-            if (user) {
-                displayNames.push(user.username || user.full_name || 'משתמש');
+        function updateSelectedUsersDisplay() {
+            const displayElement = document.querySelector('.selected-users');
+            
+            if (selectedUsers.length === 0) {
+                displayElement.textContent = 'בחר משתמשים (אופציונלי)';
+                displayElement.classList.add('placeholder');
+                return;
             }
-        }
-    });
-    
-    displayElement.textContent = displayNames.join(', ');
-    displayElement.classList.remove('placeholder');
-}
-
-function toggleUserSelection(userId) {
-    // Clear shared viewing selection if individual user is selected
-    if (userId !== 'shared_viewing') {
-        const sharedIndex = selectedUsers.indexOf('shared_viewing');
-        if (sharedIndex !== -1) {
-            selectedUsers.splice(sharedIndex, 1);
-        }
-    }
-    
-    const index = selectedUsers.indexOf(userId);
-    if (index === -1) {
-        selectedUsers.push(userId);
-    } else {
-        selectedUsers.splice(index, 1);
-    }
-    
-    updateSelectedUsersDisplay();
-    updateUserCheckboxes();
-}
-function selectSharedViewing() {
-    const isCurrentlySelected = selectedUsers.includes('shared_viewing');
-    
-    if (isCurrentlySelected) {
-        // Deselect shared viewing
-        selectedUsers = [];
-    } else {
-        // Select all users for shared viewing
-        selectedUsers = ['self', 'shared_viewing'];
-        allUsers.forEach(user => {
-            if (user.id !== currentUser.id) {
-                selectedUsers.push(user.id);
+            
+            // Check if shared viewing is selected
+            if (selectedUsers.includes('shared_viewing')) {
+                displayElement.textContent = 'צפייה משותפת (כולם)';
+                displayElement.classList.remove('placeholder');
+                return;
             }
-        });
-    }
-    
-    updateSelectedUsersDisplay();
-    updateUserCheckboxes();
-}
+            
+            // Build display text for individual selections
+            const displayNames = [];
+            
+            selectedUsers.forEach(userId => {
+                if (userId === 'self') {
+                    displayNames.push('אליי');
+                } else {
+                    const user = allUsers.find(u => u.id === userId);
+                    if (user) {
+                        displayNames.push(user.username || user.full_name || 'משתמש');
+                    }
+                }
+            });
+            
+            displayElement.textContent = displayNames.join(', ');
+            displayElement.classList.remove('placeholder');
+        }
 
-function updateUserCheckboxes() {
-    const checkboxes = document.querySelectorAll('.multiselect-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectedUsers.includes(checkbox.value);
-    });
-}
+        function toggleUserSelection(userId) {
+            // Clear shared viewing selection if individual user is selected
+            if (userId !== 'shared_viewing') {
+                const sharedIndex = selectedUsers.indexOf('shared_viewing');
+                if (sharedIndex !== -1) {
+                    selectedUsers.splice(sharedIndex, 1);
+                }
+            }
+            
+            const index = selectedUsers.indexOf(userId);
+            if (index === -1) {
+                selectedUsers.push(userId);
+            } else {
+                selectedUsers.splice(index, 1);
+            }
+            
+            updateSelectedUsersDisplay();
+            updateUserCheckboxes();
+        }
+
+        function selectSharedViewing() {
+            const isCurrentlySelected = selectedUsers.includes('shared_viewing');
+            
+            if (isCurrentlySelected) {
+                // Deselect shared viewing
+                selectedUsers = [];
+            } else {
+                // Select all users for shared viewing
+                selectedUsers = ['self', 'shared_viewing'];
+                allUsers.forEach(user => {
+                    if (user.id !== currentUser.id) {
+                        selectedUsers.push(user.id);
+                    }
+                });
+            }
+            
+            updateSelectedUsersDisplay();
+            updateUserCheckboxes();
+        }
+
+        function updateUserCheckboxes() {
+            const checkboxes = document.querySelectorAll('.multiselect-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectedUsers.includes(checkbox.value);
+            });
+        }
 
         // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
@@ -1548,68 +1667,68 @@ function updateUserCheckboxes() {
             showToast('התנתקת בהצלחה', 'success');
         }
         
-        // Load All Users - CORRECTED VERSION
-async function loadAllUsers() {
-    try {
-        const { data, error } = await supabase
-            .from('user_profiles')
-            .select('id, username, full_name');
-        
-        if (error) throw error;
-        
-        allUsers = data || [];
-        
-        // Populate the multi-select dropdown
-        const userDropdownMenu = document.getElementById('userDropdownMenu');
-        userDropdownMenu.innerHTML = '';
-        
-        // Add "אליי" option (current user)
-        const selfOption = document.createElement('div');
-        selfOption.className = 'multiselect-option';
-        selfOption.onclick = () => toggleUserSelection('self');
-        selfOption.innerHTML = `
-            <input type="checkbox" class="multiselect-checkbox" value="self">
-            <span>אליי</span>
-        `;
-        userDropdownMenu.appendChild(selfOption);
-        
-        // Add other users
-        allUsers.forEach(user => {
-            if (user.id !== currentUser.id) {
-                const option = document.createElement('div');
-                option.className = 'multiselect-option';
-                option.onclick = () => toggleUserSelection(user.id);
+        // Load All Users
+        async function loadAllUsers() {
+            try {
+                const { data, error } = await supabase
+                    .from('user_profiles')
+                    .select('id, username, full_name');
                 
-                option.innerHTML = `
-                    <input type="checkbox" class="multiselect-checkbox" value="${user.id}">
-                    <span>${user.username || user.full_name || 'משתמש'}</span>
+                if (error) throw error;
+                
+                allUsers = data || [];
+                
+                // Populate the multi-select dropdown
+                const userDropdownMenu = document.getElementById('userDropdownMenu');
+                userDropdownMenu.innerHTML = '';
+                
+                // Add "אליי" option (current user)
+                const selfOption = document.createElement('div');
+                selfOption.className = 'multiselect-option';
+                selfOption.onclick = () => toggleUserSelection('self');
+                selfOption.innerHTML = `
+                    <input type="checkbox" class="multiselect-checkbox" value="self">
+                    <span>אליי</span>
                 `;
+                userDropdownMenu.appendChild(selfOption);
                 
-                userDropdownMenu.appendChild(option);
+                // Add other users
+                allUsers.forEach(user => {
+                    if (user.id !== currentUser.id) {
+                        const option = document.createElement('div');
+                        option.className = 'multiselect-option';
+                        option.onclick = () => toggleUserSelection(user.id);
+                        
+                        option.innerHTML = `
+                            <input type="checkbox" class="multiselect-checkbox" value="${user.id}">
+                            <span>${user.username || user.full_name || 'משתמש'}</span>
+                        `;
+                        
+                        userDropdownMenu.appendChild(option);
+                    }
+                });
+                
+                // Add separator
+                const separator = document.createElement('div');
+                separator.style.cssText = 'height: 1px; background: var(--border-color); margin: 0.5rem 0;';
+                userDropdownMenu.appendChild(separator);
+                
+                // Add "צפייה משותפת" option
+                const sharedOption = document.createElement('div');
+                sharedOption.className = 'multiselect-option';
+                sharedOption.style.cssText = 'background: rgba(102, 126, 234, 0.1); font-weight: 500;';
+                sharedOption.onclick = () => selectSharedViewing();
+                sharedOption.innerHTML = `
+                    <input type="checkbox" class="multiselect-checkbox" value="shared_viewing" style="accent-color: var(--info-color);">
+                    <span style="color: var(--info-color);">צפייה משותפת (כולם)</span>
+                `;
+                userDropdownMenu.appendChild(sharedOption);
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showToast('שגיאה בטעינת המשתמשים', 'error');
             }
-        });
-        
-        // Add separator
-        const separator = document.createElement('div');
-        separator.style.cssText = 'height: 1px; background: var(--border-color); margin: 0.5rem 0;';
-        userDropdownMenu.appendChild(separator);
-        
-        // Add "צפייה משותפת" option
-        const sharedOption = document.createElement('div');
-        sharedOption.className = 'multiselect-option';
-        sharedOption.style.cssText = 'background: rgba(102, 126, 234, 0.1); font-weight: 500;';
-        sharedOption.onclick = () => selectSharedViewing();
-        sharedOption.innerHTML = `
-            <input type="checkbox" class="multiselect-checkbox" value="shared_viewing" style="accent-color: var(--info-color);">
-            <span style="color: var(--info-color);">צפייה משותפת (כולם)</span>
-        `;
-        userDropdownMenu.appendChild(sharedOption);
-        
-    } catch (error) {
-        console.error('Error loading users:', error);
-        showToast('שגיאה בטעינת המשתמשים', 'error');
-    }
-}
+        }
         
         // YouTube Functions
         function isValidYouTubeUrl(url) {
@@ -1697,90 +1816,90 @@ async function loadAllUsers() {
         }
         
         // Content Management
-async function addContent() {
-    if (!currentVideoData) {
-        showToast('אנא הדבק קישור YouTube תקין', 'error');
-        return;
-    }
-    
-    const streamingUrl = document.getElementById('streamingUrl').value.trim();
-    
-    try {
-        const contentData = {
-            user_id: currentUser.id,
-            ...currentVideoData,
-            streaming_url: streamingUrl || null,
-            content_type: selectedContentType,
-            status: 'to_complete',
-            added_by_username: currentUser.email.split('@')[0],
-            added_by_avatar: currentUser.user_metadata?.avatar_url || null
-        };
-        
-        // Handle user assignments
-        if (selectedUsers.length > 0) {
-            // Convert selected users to actual user IDs
-            const actualUserIds = [];
-            const actualUsernames = [];
+        async function addContent() {
+            if (!currentVideoData) {
+                showToast('אנא הדבק קישור YouTube תקין', 'error');
+                return;
+            }
             
-            selectedUsers.forEach(selection => {
-                if (selection === 'self') {
-                    actualUserIds.push(currentUser.id);
-                    actualUsernames.push('אליי');
-                } else if (selection !== 'shared_viewing') {
-                    // Regular user selection
-                    actualUserIds.push(selection);
-                    const user = allUsers.find(u => u.id === selection);
-                    if (user) {
-                        actualUsernames.push(user.username || user.full_name || 'משתמש');
+            const streamingUrl = document.getElementById('streamingUrl').value.trim();
+            
+            try {
+                const contentData = {
+                    user_id: currentUser.id,
+                    ...currentVideoData,
+                    streaming_url: streamingUrl || null,
+                    content_type: selectedContentType,
+                    status: 'to_complete',
+                    added_by_username: currentUser.email.split('@')[0],
+                    added_by_avatar: currentUser.user_metadata?.avatar_url || null
+                };
+                
+                // Handle user assignments
+                if (selectedUsers.length > 0) {
+                    // Convert selected users to actual user IDs
+                    const actualUserIds = [];
+                    const actualUsernames = [];
+                    
+                    selectedUsers.forEach(selection => {
+                        if (selection === 'self') {
+                            actualUserIds.push(currentUser.id);
+                            actualUsernames.push('אליי');
+                        } else if (selection !== 'shared_viewing') {
+                            // Regular user selection
+                            actualUserIds.push(selection);
+                            const user = allUsers.find(u => u.id === selection);
+                            if (user) {
+                                actualUsernames.push(user.username || user.full_name || 'משתמש');
+                            }
+                        }
+                    });
+                    
+                    if (actualUserIds.length > 0) {
+                        contentData.assigned_to = JSON.stringify(actualUserIds);
+                        contentData.assigned_to_username = JSON.stringify(actualUsernames);
                     }
                 }
-            });
-            
-            if (actualUserIds.length > 0) {
-                contentData.assigned_to = JSON.stringify(actualUserIds);
-                contentData.assigned_to_username = JSON.stringify(actualUsernames);
+                
+                const { data, error } = await supabase
+                    .from('user_content')
+                    .insert(contentData)
+                    .select();
+                
+                if (error) {
+                    if (error.code === '23505') {
+                        showToast('תוכן זה כבר קיים ברשימה', 'error');
+                    } else {
+                        throw error;
+                    }
+                    return;
+                }
+                
+                showToast('התוכן נוסף בהצלחה!', 'success');
+                closeAddModal();
+                await loadContent();
+                
+            } catch (error) {
+                console.error('Error adding content:', error);
+                showToast('שגיאה בהוספת התוכן', 'error');
             }
         }
-        
-        const { data, error } = await supabase
-            .from('user_content')
-            .insert(contentData)
-            .select();
-        
-        if (error) {
-            if (error.code === '23505') {
-                showToast('תוכן זה כבר קיים ברשימה', 'error');
-            } else {
-                throw error;
-            }
-            return;
-        }
-        
-        showToast('התוכן נוסף בהצלחה!', 'success');
-        closeAddModal();
-        await loadContent();
-        
-    } catch (error) {
-        console.error('Error adding content:', error);
-        showToast('שגיאה בהוספת התוכן', 'error');
-    }
-}
 
-// Helper function for parsing assigned users
-function getAssignedUsers(item) {
-    if (!item.assigned_to) {
-        return { userIds: [], usernames: [] };
-    }
-    
-    try {
-        const userIds = JSON.parse(item.assigned_to);
-        const usernames = item.assigned_to_username ? JSON.parse(item.assigned_to_username) : [];
-        return { userIds, usernames };
-    } catch (error) {
-        console.error('Error parsing assigned users:', error);
-        return { userIds: [], usernames: [] };
-    }
-}
+        // Helper function for parsing assigned users
+        function getAssignedUsers(item) {
+            if (!item.assigned_to) {
+                return { userIds: [], usernames: [] };
+            }
+            
+            try {
+                const userIds = JSON.parse(item.assigned_to);
+                const usernames = item.assigned_to_username ? JSON.parse(item.assigned_to_username) : [];
+                return { userIds, usernames };
+            } catch (error) {
+                console.error('Error parsing assigned users:', error);
+                return { userIds: [], usernames: [] };
+            }
+        }
         
         async function loadContent() {
             try {
@@ -1792,7 +1911,9 @@ function getAssignedUsers(item) {
                 if (error) throw error;
                 
                 allContent = data || [];
-                updateBadges();
+                updateBadges(); // Main tab badges
+                updateSubTabBadges(); // Sub tab badges
+                updateFilterStatusIndicator(); // Filter status
                 filterContent();
                 
             } catch (error) {
@@ -1809,34 +1930,123 @@ function getAssignedUsers(item) {
             document.getElementById('completedBadge').textContent = completed;
         }
         
-function filterContent() {
-    let filtered = allContent.filter(item => item.status === currentStatus);
-    
-    // Apply assignment filters
-    if (currentFilter === 'assigned_to_me') {
-        filtered = filtered.filter(item => {
-            const assignments = getAssignedUsers(item);
-            return assignments.userIds.includes(currentUser.id);
-        });
-    } else if (currentFilter === 'assigned_to_others') {
-        filtered = filtered.filter(item => {
-            const assignments = getAssignedUsers(item);
-            return assignments.userIds.length > 0 && !assignments.userIds.includes(currentUser.id);
-        });
-    } else if (currentFilter === 'shared_viewing') {
-        // NEW: Filter for shared viewing content
-        filtered = filtered.filter(item => {
-            const assignments = getAssignedUsers(item);
-            // Show content assigned to current user AND at least one other user
-            return assignments.userIds.includes(currentUser.id) && assignments.userIds.length > 1;
-        });
-    } else if (currentFilter !== 'all') {
-        // Content type filters
-        filtered = filtered.filter(item => item.content_type === currentFilter);
-    }
-    
-    renderContent(filtered);
-}
+        // Updated updateSubTabBadges function to reflect combined filtering
+        function updateSubTabBadges() {
+            const currentContent = allContent.filter(item => item.status === currentStatus);
+            
+            // Helper function to get filtered count
+            function getFilteredCount(assignmentFilter, contentTypeFilter = 'all') {
+                let filtered = currentContent;
+                
+                // Apply assignment filter
+                if (assignmentFilter === 'assigned_to_me') {
+                    filtered = filtered.filter(item => {
+                        const assignments = getAssignedUsers(item);
+                        return assignments.userIds.includes(currentUser.id);
+                    });
+                } else if (assignmentFilter === 'assigned_to_others') {
+                    filtered = filtered.filter(item => {
+                        const assignments = getAssignedUsers(item);
+                        return assignments.userIds.length > 0 && !assignments.userIds.includes(currentUser.id);
+                    });
+                } else if (assignmentFilter === 'shared_viewing') {
+                    filtered = filtered.filter(item => {
+                        const assignments = getAssignedUsers(item);
+                        return assignments.userIds.includes(currentUser.id) && assignments.userIds.length > 1;
+                    });
+                }
+                
+                // Apply content type filter
+                if (contentTypeFilter !== 'all') {
+                    filtered = filtered.filter(item => item.content_type === contentTypeFilter);
+                }
+                
+                return filtered.length;
+            }
+            
+            // Update assignment badges based on current content type filter
+            document.getElementById('allBadge').textContent = getFilteredCount('all', currentContentTypeFilter);
+            document.getElementById('assignedToMeBadge').textContent = getFilteredCount('assigned_to_me', currentContentTypeFilter);
+            document.getElementById('assignedToOthersBadge').textContent = getFilteredCount('assigned_to_others', currentContentTypeFilter);
+            document.getElementById('sharedViewingBadge').textContent = getFilteredCount('shared_viewing', currentContentTypeFilter);
+            
+            // Update content type badges based on current assignment filter (including "all content types")
+            document.getElementById('allContentTypesBadge').textContent = getFilteredCount(currentAssignmentFilter, 'all');
+            document.getElementById('movieBadge').textContent = getFilteredCount(currentAssignmentFilter, 'movie');
+            document.getElementById('seriesBadge').textContent = getFilteredCount(currentAssignmentFilter, 'series');
+            document.getElementById('musicBadge').textContent = getFilteredCount(currentAssignmentFilter, 'music');
+        }
+
+        // Filter status indicator
+        function updateFilterStatusIndicator() {
+            const filterStatus = document.getElementById('filterStatus');
+            const filterStatusText = document.getElementById('filterStatusText');
+            
+            const isAssignmentFiltered = currentAssignmentFilter !== 'all';
+            const isContentTypeFiltered = currentContentTypeFilter !== 'all';
+            
+            if (isAssignmentFiltered || isContentTypeFiltered) {
+                let statusText = 'סינון פעיל: ';
+                const filters = [];
+                
+                // Add assignment filter text
+                if (isAssignmentFiltered) {
+                    const assignmentTexts = {
+                        'assigned_to_me': 'מוקצה אליי',
+                        'assigned_to_others': 'מוקצה לשני', 
+                        'shared_viewing': 'משותף'
+                    };
+                    filters.push(assignmentTexts[currentAssignmentFilter]);
+                }
+                
+                // Add content type filter text
+                if (isContentTypeFiltered) {
+                    const contentTypeTexts = {
+                        'movie': 'סרטים',
+                        'series': 'סדרות',
+                        'music': 'מוזיקה'
+                    };
+                    filters.push(contentTypeTexts[currentContentTypeFilter]);
+                }
+                
+                statusText += filters.join(' + ');
+                filterStatusText.textContent = statusText;
+                filterStatus.classList.remove('hidden');
+            } else {
+                filterStatus.classList.add('hidden');
+            }
+        }
+
+        // Updated filterContent function to handle both filters
+        function filterContent() {
+            let filtered = allContent.filter(item => item.status === currentStatus);
+            
+            // Apply assignment filter
+            if (currentAssignmentFilter === 'assigned_to_me') {
+                filtered = filtered.filter(item => {
+                    const assignments = getAssignedUsers(item);
+                    return assignments.userIds.includes(currentUser.id);
+                });
+            } else if (currentAssignmentFilter === 'assigned_to_others') {
+                filtered = filtered.filter(item => {
+                    const assignments = getAssignedUsers(item);
+                    return assignments.userIds.length > 0 && !assignments.userIds.includes(currentUser.id);
+                });
+            } else if (currentAssignmentFilter === 'shared_viewing') {
+                filtered = filtered.filter(item => {
+                    const assignments = getAssignedUsers(item);
+                    return assignments.userIds.includes(currentUser.id) && assignments.userIds.length > 1;
+                });
+            }
+            // If currentAssignmentFilter === 'all', no additional filtering needed
+            
+            // Apply content type filter
+            if (currentContentTypeFilter !== 'all') {
+                filtered = filtered.filter(item => item.content_type === currentContentTypeFilter);
+            }
+            
+            renderContent(filtered);
+        }
         
         function renderContent(items) {
             const grid = document.getElementById('contentGrid');
@@ -2047,7 +2257,7 @@ function filterContent() {
             }
         }
         
-        // Tab Switching
+        // Tab Switching - Updated for combined filtering
         function switchMainTab(status) {
             currentStatus = status;
             
@@ -2055,16 +2265,49 @@ function filterContent() {
                 tab.classList.toggle('active', tab.dataset.status === status);
             });
             
+            updateSubTabBadges();
+            updateFilterStatusIndicator();
             filterContent();
         }
         
+        // Updated switchSubTab function to handle both filter types
         function switchSubTab(filter) {
-            currentFilter = filter;
+            const assignmentFilters = ['all', 'assigned_to_me', 'assigned_to_others', 'shared_viewing'];
+            const contentTypeFilters = ['all', 'movie', 'series', 'music'];
             
-            document.querySelectorAll('.sub-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.filter === filter);
-            });
+            if (assignmentFilters.includes(filter)) {
+                currentAssignmentFilter = filter;
+                
+                document.querySelectorAll('.assignment-tabs .sub-tab').forEach(tab => {
+                    tab.classList.toggle('active', tab.dataset.filter === filter);
+                });
+                
+                // If 'all' is selected in assignments, reset content type to 'all'
+                if (filter === 'all') {
+                    currentContentTypeFilter = 'all';
+                    document.querySelectorAll('.content-type-tabs .sub-tab').forEach(tab => {
+                        tab.classList.toggle('active', tab.dataset.filter === 'all');
+                    });
+                }
+                
+            } else if (contentTypeFilters.includes(filter)) {
+                currentContentTypeFilter = filter;
+                
+                document.querySelectorAll('.content-type-tabs .sub-tab').forEach(tab => {
+                    tab.classList.toggle('active', tab.dataset.filter === filter);
+                });
+                
+                // If a specific content type is selected and assignment is 'all', change to 'assigned_to_me'
+                if (filter !== 'all' && currentAssignmentFilter === 'all') {
+                    currentAssignmentFilter = 'assigned_to_me';
+                    document.querySelectorAll('.assignment-tabs .sub-tab').forEach(tab => {
+                        tab.classList.toggle('active', tab.dataset.filter === 'assigned_to_me');
+                    });
+                }
+            }
             
+            updateSubTabBadges();
+            updateFilterStatusIndicator();
             filterContent();
         }
         
