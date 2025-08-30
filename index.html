@@ -1064,7 +1064,7 @@
     }
     
     .main-tabs {
-        overflow-x: auto;
+        
         white-space: nowrap;
     }
     
@@ -1246,7 +1246,7 @@
                             <span class="tab-badge" id="assignedToMeBadge">0</span>
                         </button>
                         <button class="sub-tab" data-filter="assigned_to_others" onclick="switchSubTab('assigned_to_others')">
-                            <i class="fas fa-users"></i> מוקצה לשני
+                            <i class="fas fa-users"></i> מוקצה לשני.ה
                             <span class="tab-badge" id="assignedToOthersBadge">0</span>
                         </button>
                         <button class="sub-tab" data-filter="shared_viewing" onclick="switchSubTab('shared_viewing')">
@@ -2035,7 +2035,7 @@
                 if (isAssignmentFiltered) {
                     const assignmentTexts = {
                         'assigned_to_me': 'מוקצה אליי',
-                        'assigned_to_others': 'מוקצה לשני', 
+                        'assigned_to_others': 'מוקצה לשני.ה', 
                         'shared_viewing': 'משותף'
                     };
                     filters.push(assignmentTexts[currentAssignmentFilter]);
