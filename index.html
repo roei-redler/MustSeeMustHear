@@ -817,7 +817,13 @@
             color: var(--text-secondary);
             font-size: 0.85rem;
         }
-        
+        .sub-tab i.fa-user-friends {
+    color: var(--info-color);
+}
+
+.sub-tab.active i.fa-user-friends {
+    color: white;
+}
         .card-assignment {
             display: flex;
             align-items: center;
@@ -1087,26 +1093,30 @@
                     </button>
                 </div>
                 
-                <div class="sub-tabs">
-                    <button class="sub-tab active" data-filter="all" onclick="switchSubTab('all')">
-                        <i class="fas fa-border-all"></i> הכל
-                    </button>
-                    <button class="sub-tab" data-filter="assigned_to_me" onclick="switchSubTab('assigned_to_me')">
-                        <i class="fas fa-user"></i> מוקצה אליי
-                    </button>
-                    <button class="sub-tab" data-filter="assigned_to_others" onclick="switchSubTab('assigned_to_others')">
-                        <i class="fas fa-users"></i> מוקצה לאחרים
-                    </button>
-                    <button class="sub-tab" data-filter="movie" onclick="switchSubTab('movie')">
-                        <i class="fas fa-film"></i> סרטים
-                    </button>
-                    <button class="sub-tab" data-filter="series" onclick="switchSubTab('series')">
-                        <i class="fas fa-tv"></i> סדרות
-                    </button>
-                    <button class="sub-tab" data-filter="music" onclick="switchSubTab('music')">
-                        <i class="fas fa-music"></i> מוזיקה
-                    </button>
-                </div>
+<div class="sub-tabs">
+    <button class="sub-tab active" data-filter="all" onclick="switchSubTab('all')">
+        <i class="fas fa-border-all"></i> הכל
+    </button>
+    <button class="sub-tab" data-filter="assigned_to_me" onclick="switchSubTab('assigned_to_me')">
+        <i class="fas fa-user"></i> מוקצה אליי
+    </button>
+    <button class="sub-tab" data-filter="assigned_to_others" onclick="switchSubTab('assigned_to_others')">
+        <i class="fas fa-users"></i> מוקצה לאחרים
+    </button>
+    <!-- NEW: Add shared viewing tab -->
+    <button class="sub-tab" data-filter="shared_viewing" onclick="switchSubTab('shared_viewing')">
+        <i class="fas fa-user-friends"></i> צפייה משותפת
+    </button>
+    <button class="sub-tab" data-filter="movie" onclick="switchSubTab('movie')">
+        <i class="fas fa-film"></i> סרטים
+    </button>
+    <button class="sub-tab" data-filter="series" onclick="switchSubTab('series')">
+        <i class="fas fa-tv"></i> סדרות
+    </button>
+    <button class="sub-tab" data-filter="music" onclick="switchSubTab('music')">
+        <i class="fas fa-music"></i> מוזיקה
+    </button>
+</div>
                 
                 <!-- Content Grid -->
                 <div class="content-grid" id="contentGrid">
@@ -1812,6 +1822,13 @@ function filterContent() {
         filtered = filtered.filter(item => {
             const assignments = getAssignedUsers(item);
             return assignments.userIds.length > 0 && !assignments.userIds.includes(currentUser.id);
+        });
+    } else if (currentFilter === 'shared_viewing') {
+        // NEW: Filter for shared viewing content
+        filtered = filtered.filter(item => {
+            const assignments = getAssignedUsers(item);
+            // Show content assigned to current user AND at least one other user
+            return assignments.userIds.includes(currentUser.id) && assignments.userIds.length > 1;
         });
     } else if (currentFilter !== 'all') {
         // Content type filters
