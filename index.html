@@ -225,14 +225,81 @@
             margin: 0 auto;
         }
         
-        /* Add Content Section */
-        .add-content-card {
+        /* Floating Add Button */
+        .floating-add-btn {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+        
+        .floating-add-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 30px rgba(229, 9, 20, 0.4);
+        }
+        
+        /* Add Content Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .add-content-modal {
             background: var(--card-bg);
             border-radius: 20px;
             padding: 2rem;
-            margin-bottom: 2rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-close:hover {
+            background: var(--accent-color);
+            color: white;
         }
         
         .section-title {
@@ -812,6 +879,17 @@
                 overflow-x: auto;
                 white-space: nowrap;
             }
+            
+            .add-content-modal {
+                width: 95%;
+                padding: 1.5rem;
+            }
+            
+            .floating-add-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
         }
     </style>
 </head>
@@ -891,59 +969,6 @@
         
         <!-- Main Container -->
         <div class="main-container">
-            <!-- Add Content Card -->
-            <div class="add-content-card">
-                <h2 class="section-title">
-                    <i class="fas fa-plus-circle"></i>
-                    הוסף תוכן חדש
-                </h2>
-                
-                <div class="input-group">
-                    <label class="input-label">קישור YouTube</label>
-                    <input type="text" 
-                           class="youtube-input" 
-                           id="youtubeUrl" 
-                           placeholder="הדבק כאן קישור מ-YouTube (לדוגמה: https://www.youtube.com/watch?v=...)">
-                </div>
-                
-                <div class="input-group">
-                    <label class="input-label">סוג תוכן</label>
-                    <div class="content-type-selector">
-                        <button class="type-btn active" data-type="movie">
-                            <i class="fas fa-film"></i> סרט
-                        </button>
-                        <button class="type-btn" data-type="series">
-                            <i class="fas fa-tv"></i> סדרה
-                        </button>
-                        <button class="type-btn" data-type="music">
-                            <i class="fas fa-music"></i> מוזיקה
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="user-selector">
-                    <label class="input-label">הקצה למשתמש</label>
-                    <select class="user-select" id="assignToUser">
-                        <option value="">לעצמי</option>
-                    </select>
-                </div>
-                
-                <div class="video-preview" id="videoPreview">
-                    <img class="preview-thumbnail" id="previewThumbnail" src="" alt="">
-                    <div class="preview-info">
-                        <div class="preview-title" id="previewTitle"></div>
-                        <div class="preview-meta">
-                            <span id="previewChannel"></span>
-                            <span id="previewDuration"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <button class="btn-add-content" onclick="addContent()" id="addContentBtn">
-                    <i class="fas fa-plus"></i> הוסף לרשימה
-                </button>
-            </div>
-            
             <!-- Tabs Section -->
             <div class="tabs-section">
                 <div class="main-tabs">
@@ -979,6 +1004,70 @@
                     </div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Floating Add Button -->
+        <button class="floating-add-btn" onclick="openAddModal()">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    
+    <!-- Add Content Modal -->
+    <div class="modal-overlay" id="addModalOverlay" onclick="closeAddModal(event)">
+        <div class="add-content-modal" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeAddModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <h2 class="section-title">
+                <i class="fas fa-plus-circle"></i>
+                הוסף תוכן חדש
+            </h2>
+            
+            <div class="input-group">
+                <label class="input-label">קישור YouTube</label>
+                <input type="text" 
+                       class="youtube-input" 
+                       id="youtubeUrl" 
+                       placeholder="הדבק כאן קישור מ-YouTube (לדוגמה: https://www.youtube.com/watch?v=...)">
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">סוג תוכן</label>
+                <div class="content-type-selector">
+                    <button class="type-btn active" data-type="movie">
+                        <i class="fas fa-film"></i> סרט
+                    </button>
+                    <button class="type-btn" data-type="series">
+                        <i class="fas fa-tv"></i> סדרה
+                    </button>
+                    <button class="type-btn" data-type="music">
+                        <i class="fas fa-music"></i> מוזיקה
+                    </button>
+                </div>
+            </div>
+            
+            <div class="user-selector">
+                <label class="input-label">הקצה למשתמש</label>
+                <select class="user-select" id="assignToUser">
+                    <option value="">לעצמי</option>
+                </select>
+            </div>
+            
+            <div class="video-preview" id="videoPreview">
+                <img class="preview-thumbnail" id="previewThumbnail" src="" alt="">
+                <div class="preview-info">
+                    <div class="preview-title" id="previewTitle"></div>
+                    <div class="preview-meta">
+                        <span id="previewChannel"></span>
+                        <span id="previewDuration"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn-add-content" onclick="addContent()" id="addContentBtn">
+                <i class="fas fa-plus"></i> הוסף לרשימה
+            </button>
         </div>
     </div>
     
@@ -1045,6 +1134,24 @@
             document.getElementById('registerForm').style.display = 'block';
         }
         
+        // Modal Functions
+        function openAddModal() {
+            document.getElementById('addModalOverlay').classList.add('active');
+        }
+        
+        function closeAddModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('addModalOverlay').classList.remove('active');
+            // Clear form
+            document.getElementById('youtubeUrl').value = '';
+            document.getElementById('assignToUser').value = '';
+            hideVideoPreview();
+            // Reset content type to movie
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
+            selectedContentType = 'movie';
+        }
+        
         // Event Listeners Setup
         function setupEventListeners() {
             // Login Form
@@ -1070,48 +1177,40 @@
                 }
             });
             
-            // Register Form
-            document.getElementById('registerForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('registerEmail').value;
-                const password = document.getElementById('registerPassword').value;
-                const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
-                const fullName = document.getElementById('registerName').value;
-                
-                if (password !== passwordConfirm) {
-                    showToast('הסיסמאות אינן תואמות', 'error');
-                    return;
+// Register Form
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+    const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+    const fullName = document.getElementById('registerName').value;
+    
+    if (password !== passwordConfirm) {
+        showToast('הסיסמאות אינן תואמות', 'error');
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    full_name: fullName,
+                    username: email.split('@')[0]
                 }
-                
-                try {
-                    const { data, error } = await supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                            data: {
-                                full_name: fullName
-                            }
-                        }
-                    });
-                    
-                    if (error) throw error;
-                    
-                    // Create user profile
-                    if (data.user) {
-                        await supabase.from('user_profiles').insert({
-                            id: data.user.id,
-                            username: email.split('@')[0],
-                            full_name: fullName
-                        });
-                    }
-                    
-                    showToast('נרשמת בהצלחה! אנא אמת את כתובת האימייל', 'success');
-                    showLogin();
-                    
-                } catch (error) {
-                    showToast(error.message || 'שגיאה בהרשמה', 'error');
-                }
-            });
+            }
+        });
+        
+        if (error) throw error;
+        
+        showToast('נרשמת בהצלחה! אנא אמת את כתובת האימייל', 'success');
+        showLogin();
+        
+    } catch (error) {
+        showToast(error.message || 'שגיאה בהרשמה', 'error');
+    }
+});
             
             // YouTube URL Input
             document.getElementById('youtubeUrl').addEventListener('input', debounce(async (e) => {
@@ -1131,6 +1230,13 @@
                     selectedContentType = btn.dataset.type;
                 });
             });
+            
+            // Close modal on ESC key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeAddModal();
+                }
+            });
         }
         
         // Logout
@@ -1141,57 +1247,62 @@
             showToast('התנתקת בהצלחה', 'success');
         }
         
-        // Load All Users
-        async function loadAllUsers() {
-            try {
-                const { data, error } = await supabase.rpc('get_all_users');
-                
-                if (error) throw error;
-                
-                allUsers = data || [];
-                
-                const userSelect = document.getElementById('assignToUser');
-                userSelect.innerHTML = '<option value="">לעצמי</option>';
-                
-                allUsers.forEach(user => {
-                    if (user.id !== currentUser.id) {
-                        const option = document.createElement('option');
-                        option.value = user.id;
-                        option.textContent = user.username || user.email.split('@')[0];
-                        userSelect.appendChild(option);
-                    }
-                });
-                
-            } catch (error) {
-                console.error('Error loading users:', error);
+
+// Load All Users - CORRECTED VERSION
+async function loadAllUsers() {
+    try {
+        // Query the public.user_profiles table (without email since it's not in this table)
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('id, username, full_name');
+        
+        if (error) throw error;
+        
+        allUsers = data || [];
+        
+        const userSelect = document.getElementById('assignToUser');
+        userSelect.innerHTML = '<option value="">לעצמי</option>';
+        
+        allUsers.forEach(user => {
+            if (user.id !== currentUser.id) {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.username || 'משתמש';
+                userSelect.appendChild(option);
             }
-        }
+        });
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showToast('שגיאה בטעינת המשתמשים', 'error');
+    }
+}
         
         // YouTube Functions
-function isValidYouTubeUrl(url) {
-    const patterns = [
-        /^https?:\/\/(www\.)?youtube\.com\/watch\?(.*&)?v=([a-zA-Z0-9_-]{11})/,
-        /^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})/,
-        /^https?:\/\/(www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
-    ];
-    
-    return patterns.some(pattern => pattern.test(url));
-}
-
-function extractYouTubeId(url) {
-    const patterns = [
-        /[?&]v=([a-zA-Z0-9_-]{11})/,   // works even if "v" isn't first
-        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-        /embed\/([a-zA-Z0-9_-]{11})/
-    ];
-    
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match) return match[1];
-    }
-    
-    return null;
-}
+        function isValidYouTubeUrl(url) {
+            const patterns = [
+                /^https?:\/\/(www\.)?youtube\.com\/watch\?(.*&)?v=([a-zA-Z0-9_-]{11})/,
+                /^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})/,
+                /^https?:\/\/(www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
+            ];
+            
+            return patterns.some(pattern => pattern.test(url));
+        }
+        
+        function extractYouTubeId(url) {
+            const patterns = [
+                /[?&]v=([a-zA-Z0-9_-]{11})/,
+                /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+                /embed\/([a-zA-Z0-9_-]{11})/
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) return match[1];
+            }
+            
+            return null;
+        }
         
         async function fetchYouTubeData(url) {
             const videoId = extractYouTubeId(url);
@@ -1297,9 +1408,7 @@ function extractYouTubeId(url) {
                 }
                 
                 showToast('התוכן נוסף בהצלחה!', 'success');
-                document.getElementById('youtubeUrl').value = '';
-                document.getElementById('assignToUser').value = '';
-                hideVideoPreview();
+                closeAddModal();
                 await loadContent();
                 
             } catch (error) {
@@ -1364,7 +1473,6 @@ function extractYouTubeId(url) {
             }
             
             grid.innerHTML = items.map(item => {
-                const isOwner = item.user_id === currentUser.id;
                 const typeIcon = getTypeIcon(item.content_type);
                 const typeName = getTypeName(item.content_type);
                 
@@ -1380,11 +1488,9 @@ function extractYouTubeId(url) {
                                     <i class="fas fa-undo"></i>
                                 </button>
                             `}
-                            ${isOwner ? `
-                                <button class="action-btn delete" onclick="deleteContent('${item.id}')" title="מחק">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            ` : ''}
+                            <button class="action-btn delete" onclick="deleteContent('${item.id}')" title="מחק">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                         
                         <div class="card-thumbnail-wrapper" onclick="window.open('${item.youtube_url}', '_blank')">
@@ -1502,6 +1608,7 @@ function extractYouTubeId(url) {
             }
         }
         
+        // FIXED: Remove user restriction for deletion
         async function deleteContent(contentId) {
             if (!confirm('האם אתה בטוח שברצונך למחוק תוכן זה?')) return;
             
@@ -1509,8 +1616,8 @@ function extractYouTubeId(url) {
                 const { error } = await supabase
                     .from('user_content')
                     .delete()
-                    .eq('id', contentId)
-                    .eq('user_id', currentUser.id);
+                    .eq('id', contentId);
+                // Removed .eq('user_id', currentUser.id) to allow any user to delete any content
                 
                 if (error) throw error;
                 
