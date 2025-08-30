@@ -1549,7 +1549,7 @@
                 } else {
                     const user = allUsers.find(u => u.id === userId);
                     if (user) {
-                        displayNames.push(user.username || user.full_name || 'משתמש');
+                        displayNames.push(user.full_name || user.username || 'משתמש');
                     }
                 }
             });
@@ -1741,10 +1741,10 @@
                         option.className = 'multiselect-option';
                         option.onclick = () => toggleUserSelection(user.id);
                         
-                        option.innerHTML = `
-                            <input type="checkbox" class="multiselect-checkbox" value="${user.id}">
-                            <span>${user.username || user.full_name || 'משתמש'}</span>
-                        `;
+option.innerHTML = `
+    <input type="checkbox" class="multiselect-checkbox" value="${user.id}">
+    <span>${user.full_name || user.username || 'משתמש'}</span>
+`;
                         
                         userDropdownMenu.appendChild(option);
                     }
@@ -1892,7 +1892,7 @@
                             actualUserIds.push(selection);
                             const user = allUsers.find(u => u.id === selection);
                             if (user) {
-                                actualUsernames.push(user.username || user.full_name || 'משתמש');
+                                actualUsernames.push(user.full_name || user.username || 'משתמש');
                             }
                         }
                     });
