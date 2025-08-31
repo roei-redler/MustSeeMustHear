@@ -41,7 +41,50 @@
             min-height: 100vh;
             direction: rtl;
         }
+  footer {
+      background: #000;
+      color: #aaa;
+      padding: 40px 20px;
+      text-align: center;
+    }
 
+    footer .footer-links {
+      margin-bottom: 20px;
+    }
+
+    footer .footer-links a {
+      color: #aaa;
+      margin: 0 12px;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    footer .footer-links a:hover {
+      color: #fff;
+    }
+
+    footer .social {
+      margin-bottom: 20px;
+    }
+
+    footer .social a {
+      display: inline-block;
+      margin: 0 8px;
+      color: #aaa;
+      font-size: 18px;
+      transition: color 0.2s;
+    }
+
+    footer .social a:hover {
+      color: #fff;
+    }
+
+    footer p {
+      font-size: 13px;
+      margin: 0;
+      color: #666;
+    }
         /* Tab Groups */
         .tab-group {
             display: flex;
@@ -3067,5 +3110,21 @@ fireMultipleConfetti();
             }, 3000);
         }
     </script>
+     <footer>
+
+
+    <div class="social">
+      <a href="#"><i class="fab fa-twitter"></i></a>
+      <a href="#"><i class="fab fa-github"></i></a>
+      <a href="#"><i class="fab fa-linkedin"></i></a>
+      <a href="#"><i class="fab fa-instagram"></i></a>
+    </div>
+
+    <p>&copy; <span id="year"></span> Roei Redler. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
