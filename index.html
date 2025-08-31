@@ -474,7 +474,9 @@
             border-color: var(--accent-color);
             background: rgba(255, 255, 255, 0.05);
         }
-        
+        .action-btn.edit:hover {
+    background: var(--info-color);
+}
         .content-type-selector {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -1639,10 +1641,10 @@
                 <i class="fas fa-times"></i>
             </button>
             
-            <h2 class="section-title">
-                <i class="fas fa-plus-circle"></i>
-                הוסף תוכן חדש
-            </h2>
+<h2 class="section-title" id="modalTitle">
+    <i class="fas fa-plus-circle" id="modalIcon"></i>
+    <span id="modalTitleText">הוסף תוכן חדש</span>
+</h2>
             
             <div class="input-group">
                 <label class="input-label">קישור YouTube</label>
@@ -1699,9 +1701,10 @@
                 </div>
             </div>
             
-            <button class="btn-add-content" onclick="addContent()" id="addContentBtn">
-                <i class="fas fa-plus"></i> הוסף לרשימה
-            </button>
+<button class="btn-add-content" onclick="handleFormSubmit()" id="submitBtn">
+    <i class="fas fa-plus" id="submitIcon"></i> 
+    <span id="submitText">הוסף לרשימה</span>
+</button>
         </div>
     </div>
 
@@ -1768,6 +1771,9 @@
         let allContent = [];
         let allUsers = [];
         let currentContentForWatch = null;
+        let isEditMode = false;
+let editingContentId = null;
+let editingContent = null;
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1838,25 +1844,120 @@ function showApp() {
         }
         
         // Modal Functions
-        function openAddModal() {
-            document.getElementById('addModalOverlay').classList.add('active');
+function openAddModal(contentId = null) {
+    isEditMode = false;
+    editingContentId = null;
+    editingContent = null;
+    
+    // Reset modal to add mode
+    document.getElementById('modalIcon').className = 'fas fa-plus-circle';
+    document.getElementById('modalTitleText').textContent = 'הוסף תוכן חדש';
+    document.getElementById('submitIcon').className = 'fas fa-plus';
+    document.getElementById('submitText').textContent = 'הוסף לרשימה';
+    
+    // Clear form
+    clearModalForm();
+    
+    document.getElementById('addModalOverlay').classList.add('active');
+}
+function openEditModal(contentId) {
+    const content = allContent.find(item => item.id === contentId);
+    if (!content) {
+        showToast('לא ניתן לעטור תוכן זה', 'error');
+        return;
+    }
+    
+    isEditMode = true;
+    editingContentId = contentId;
+    editingContent = content;
+    
+    // Update modal to edit mode
+    document.getElementById('modalIcon').className = 'fas fa-edit';
+    document.getElementById('modalTitleText').textContent = 'ערוך תוכן';
+    document.getElementById('submitIcon').className = 'fas fa-save';
+    document.getElementById('submitText').textContent = 'שמור שינויים';
+    
+    // Populate form with existing data
+    populateFormForEdit(content);
+    
+    document.getElementById('addModalOverlay').classList.add('active');
+}
+ function populateFormForEdit(content) {
+    // Populate YouTube URL
+    document.getElementById('youtubeUrl').value = content.youtube_url || '';
+    
+    // Populate streaming URL
+    document.getElementById('streamingUrl').value = content.streaming_url || '';
+    
+    // Set content type
+    document.querySelectorAll('.type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === content.content_type);
+    });
+    selectedContentType = content.content_type;
+    
+    // Populate assigned users
+    selectedUsers = [];
+    if (content.assigned_to) {
+        try {
+            const assignedUserIds = JSON.parse(content.assigned_to);
+            selectedUsers = [...assignedUserIds];
+            
+            // Check if it's shared viewing (user assigned to themselves + others)
+            if (assignedUserIds.includes(currentUser.id) && assignedUserIds.length > 1) {
+                if (!selectedUsers.includes('shared_viewing')) {
+                    selectedUsers.push('shared_viewing');
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing assigned users:', error);
         }
-        
-        function closeAddModal(event) {
-            if (event && event.target !== event.currentTarget) return;
-            document.getElementById('addModalOverlay').classList.remove('active');
-            // Clear form
-            document.getElementById('youtubeUrl').value = '';
-            document.getElementById('streamingUrl').value = '';
-            selectedUsers = [];
-            updateSelectedUsersDisplay();
-            updateUserCheckboxes();
-            hideVideoPreview();
-            // Reset content type to movie
-            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
-            selectedContentType = 'movie';
-        }
+    }
+    
+    updateSelectedUsersDisplay();
+    updateUserCheckboxes();
+    
+    // Set video preview data
+    currentVideoData = {
+        youtube_id: content.youtube_id,
+        youtube_url: content.youtube_url,
+        title: content.title,
+        description: content.description,
+        thumbnail_url: content.thumbnail_url,
+        channel_name: content.channel_name,
+        duration: content.duration
+    };
+    
+    // Show video preview
+    showVideoPreview(currentVideoData);
+}  
+function clearModalForm() {
+    document.getElementById('youtubeUrl').value = '';
+    document.getElementById('streamingUrl').value = '';
+    selectedUsers = [];
+    updateSelectedUsersDisplay();
+    updateUserCheckboxes();
+    hideVideoPreview();
+    
+    // Reset content type to movie
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
+    selectedContentType = 'movie';
+    
+    currentVideoData = null;
+}     
+function closeAddModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    
+    document.getElementById('addModalOverlay').classList.remove('active');
+    
+    // Reset edit mode
+    isEditMode = false;
+    editingContentId = null;
+    editingContent = null;
+    
+    // Clear form
+    clearModalForm();
+}
 
         function openWatchModal(content) {
             currentContentForWatch = content;
@@ -2171,7 +2272,113 @@ async function loadAllUsers() {
             
             return null;
         }
+        function handleFormSubmit() {
+    if (isEditMode) {
+        updateContent();
+    } else {
+        addContent();
+    }
+}
+async function updateContent() {
+    if (!editingContentId || !editingContent) {
+        showToast('שגיאה בעדכון התוכן', 'error');
+        return;
+    }
+    
+    // If YouTube URL changed, validate and fetch new data
+    const youtubeUrl = document.getElementById('youtubeUrl').value.trim();
+    if (youtubeUrl !== editingContent.youtube_url) {
+        if (!isValidYouTubeUrl(youtubeUrl)) {
+            showToast('אנא הדבק קישור YouTube תקין', 'error');
+            return;
+        }
         
+        // If URL changed but we don't have new video data, try to fetch it
+        if (!currentVideoData || currentVideoData.youtube_url !== youtubeUrl) {
+            await fetchYouTubeData(youtubeUrl);
+            if (!currentVideoData) {
+                showToast('לא ניתן לטעון נתוני הסרטון החדש', 'error');
+                return;
+            }
+        }
+    } else if (!currentVideoData) {
+        // Use existing video data if URL hasn't changed
+        currentVideoData = {
+            youtube_id: editingContent.youtube_id,
+            youtube_url: editingContent.youtube_url,
+            title: editingContent.title,
+            description: editingContent.description,
+            thumbnail_url: editingContent.thumbnail_url,
+            channel_name: editingContent.channel_name,
+            duration: editingContent.duration
+        };
+    }
+    
+    const streamingUrl = document.getElementById('streamingUrl').value.trim();
+    
+    try {
+        const updateData = {
+            ...currentVideoData,
+            streaming_url: streamingUrl || null,
+            content_type: selectedContentType,
+        };
+        
+        // Handle user assignments
+        if (selectedUsers.length > 0) {
+            const actualUserIds = [];
+            const actualUsernames = [];
+            
+            selectedUsers.forEach(selection => {
+                if (selection === 'self') {
+                    actualUserIds.push(currentUser.id);
+                    const currentUserDisplayName = currentUser.user_metadata?.full_name || 
+                                                 currentUser.email.split('@')[0];
+                    actualUsernames.push(currentUserDisplayName);
+                } else if (selection !== 'shared_viewing') {
+                    actualUserIds.push(selection);
+                    const user = allUsers.find(u => u.id === selection);
+                    if (user) {
+                        actualUsernames.push(user.full_name || user.username || 'משתמש');
+                    }
+                }
+            });
+            
+            if (actualUserIds.length > 0) {
+                updateData.assigned_to = JSON.stringify(actualUserIds);
+                updateData.assigned_to_username = JSON.stringify(actualUsernames);
+            } else {
+                updateData.assigned_to = null;
+                updateData.assigned_to_username = null;
+            }
+        } else {
+            updateData.assigned_to = null;
+            updateData.assigned_to_username = null;
+        }
+        
+        const { data, error } = await supabase
+            .from('user_content')
+            .update(updateData)
+            .eq('id', editingContentId)
+            .select();
+        
+        if (error) {
+            if (error.code === '23505') {
+                showToast('תוכן זה כבר קיים ברשימה', 'error');
+            } else {
+                throw error;
+            }
+            return;
+        }
+        
+        showToast('התוכן עודכן בהצלחה!', 'success');
+        closeAddModal();
+        await loadContent();
+        
+    } catch (error) {
+        console.error('Error updating content:', error);
+        showToast('שגיאה בעדכון התוכן', 'error');
+    }
+}
         async function fetchYouTubeData(url) {
             const videoId = extractYouTubeId(url);
             if (!videoId) return;
@@ -2833,20 +3040,23 @@ function renderContent(items) {
                     <div class="card-flip-inner">
                         <!-- Front of card -->
                         <div class="card-front">
-                            <div class="card-actions">
-                                ${currentStatus === 'to_complete' ? `
-                                    <button class="action-btn" onclick="markCompleted('${item.id}')" title="סמן כהושלם">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                ` : `
-                                    <button class="action-btn" onclick="markIncomplete('${item.id}')" title="החזר להשלמה">
-                                        <i class="fas fa-undo"></i>
-                                    </button>
-                                `}
-                                <button class="action-btn delete" onclick="deleteContent('${item.id}')" title="מחק">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
+<div class="card-actions">
+    <button class="action-btn" onclick="openEditModal('${item.id}')" title="ערוך">
+        <i class="fas fa-edit"></i>
+    </button>
+    ${currentStatus === 'to_complete' ? `
+        <button class="action-btn" onclick="markCompleted('${item.id}')" title="סמן כהושלם">
+            <i class="fas fa-check"></i>
+        </button>
+    ` : `
+        <button class="action-btn" onclick="markIncomplete('${item.id}')" title="החזר להשלמה">
+            <i class="fas fa-undo"></i>
+        </button>
+    `}
+    <button class="action-btn delete" onclick="deleteContent('${item.id}')" title="מחק">
+        <i class="fas fa-trash"></i>
+    </button>
+</div>
                             
                             ${ratingToggleHtml}
                             
