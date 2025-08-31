@@ -1370,6 +1370,52 @@
         font-size: 0.9rem;
     }
 }
+
+/* Interactive Rating Styles */
+.user-rating-section {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+.interactive-rating {
+    display: flex;
+    justify-content: center;
+    gap: 0.3rem;
+    margin: 0.5rem 0;
+}
+
+.interactive-star {
+    color: #ddd;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.interactive-star:hover {
+    color: #ffc107;
+    transform: scale(1.1);
+}
+
+.interactive-star.filled {
+    color: #ffc107;
+}
+
+.interactive-star:hover ~ .interactive-star {
+    color: #ddd;
+}
+
+/* Hover effect for rating */
+.interactive-rating:hover .interactive-star {
+    color: #ddd;
+}
+
+.interactive-rating .interactive-star:hover,
+.interactive-rating .interactive-star:hover ~ .interactive-star {
+    color: #ffc107;
+}
     </style>
 </head>
 <body>
@@ -1642,7 +1688,14 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4c3p4emJ5bXRzc3Z5cHVtcWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMjkyMjUsImV4cCI6MjA3MTkwNTIyNX0.13t1BXPqPhUaKB6xviale4DZ6cGc23dcNyKKh_0kBg0';
         const YOUTUBE_API_KEY = 'AIzaSyB9gQvaaJqer5qyv7kHP2-NfDwAnPkiQZQ';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        persistSession: true,
+        storage: window.localStorage,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+    }
+});
         
         // Updated State - separate assignment and content type filters
         let currentUser = null;
@@ -1663,16 +1716,42 @@
         });
         
         // Auth Functions
-        async function checkAuth() {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (user) {
-                currentUser = user;
+async function checkAuth() {
+    try {
+        // First check for existing session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+            console.error('Session error:', sessionError);
+        }
+        
+        if (session?.user) {
+            currentUser = session.user;
+            showApp();
+            return;
+        }
+
+        // Listen for auth changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                currentUser = session.user;
                 showApp();
-            } else {
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
                 showAuth();
             }
+        });
+
+        // If no session found, show auth
+        if (!session) {
+            showAuth();
         }
+        
+    } catch (error) {
+        console.error('Auth check error:', error);
+        showAuth();
+    }
+}
         
         function showAuth() {
             document.getElementById('authWrapper').classList.remove('hidden');
@@ -1759,40 +1838,40 @@ function showApp() {
             menu.classList.toggle('active');
         }
 
-        function updateSelectedUsersDisplay() {
-            const displayElement = document.querySelector('.selected-users');
-            
-            if (selectedUsers.length === 0) {
-                displayElement.textContent = 'בחר משתמשים (אופציונלי)';
-                displayElement.classList.add('placeholder');
-                return;
+// Keep the modal display logic showing "אליי" for UX
+function updateSelectedUsersDisplay() {
+    const displayElement = document.querySelector('.selected-users');
+    
+    if (selectedUsers.length === 0) {
+        displayElement.textContent = 'בחר משתמשים (אופציונלי)';
+        displayElement.classList.add('placeholder');
+        return;
+    }
+    
+    // Check if shared viewing is selected
+    if (selectedUsers.includes('shared_viewing')) {
+        displayElement.textContent = 'צפייה משותפת (כולם)';
+        displayElement.classList.remove('placeholder');
+        return;
+    }
+    
+    // Build display text for individual selections (keep "אליי" in modal UI)
+    const displayNames = [];
+    
+    selectedUsers.forEach(userId => {
+        if (userId === 'self') {
+            displayNames.push('אליי'); // Keep Hebrew UI text in modal
+        } else {
+            const user = allUsers.find(u => u.id === userId);
+            if (user) {
+                displayNames.push(user.full_name || user.username || 'משתמש');
             }
-            
-            // Check if shared viewing is selected
-            if (selectedUsers.includes('shared_viewing')) {
-                displayElement.textContent = 'צפייה משותפת (כולם)';
-                displayElement.classList.remove('placeholder');
-                return;
-            }
-            
-            // Build display text for individual selections
-            const displayNames = [];
-            
-            selectedUsers.forEach(userId => {
-                if (userId === 'self') {
-                    displayNames.push('אליי');
-                } else {
-                    const user = allUsers.find(u => u.id === userId);
-                    if (user) {
-                        displayNames.push(user.full_name || user.username || 'משתמש');
-                    }
-                }
-            });
-            
-            displayElement.textContent = displayNames.join(', ');
-            displayElement.classList.remove('placeholder');
         }
-
+    });
+    
+    displayElement.textContent = displayNames.join(', ');
+    displayElement.classList.remove('placeholder');
+}
         function toggleUserSelection(userId) {
             // Clear shared viewing selection if individual user is selected
             if (userId !== 'shared_viewing') {
@@ -1945,68 +2024,68 @@ function showApp() {
         }
         
         // Load All Users
-        async function loadAllUsers() {
-            try {
-                const { data, error } = await supabase
-                    .from('user_profiles')
-                    .select('id, username, full_name');
-                
-                if (error) throw error;
-                
-                allUsers = data || [];
-                
-                // Populate the multi-select dropdown
-                const userDropdownMenu = document.getElementById('userDropdownMenu');
-                userDropdownMenu.innerHTML = '';
-                
-                // Add "אליי" option (current user)
-                const selfOption = document.createElement('div');
-                selfOption.className = 'multiselect-option';
-                selfOption.onclick = () => toggleUserSelection('self');
-                selfOption.innerHTML = `
-                    <input type="checkbox" class="multiselect-checkbox" value="self">
-                    <span>אליי</span>
-                `;
-                userDropdownMenu.appendChild(selfOption);
-                
-                // Add other users
-                allUsers.forEach(user => {
-                    if (user.id !== currentUser.id) {
-                        const option = document.createElement('div');
-                        option.className = 'multiselect-option';
-                        option.onclick = () => toggleUserSelection(user.id);
-                        
-option.innerHTML = `
-    <input type="checkbox" class="multiselect-checkbox" value="${user.id}">
-    <span>${user.full_name || user.username || 'משתמש'}</span>
-`;
-                        
-                        userDropdownMenu.appendChild(option);
-                    }
-                });
-                
-                // Add separator
-                const separator = document.createElement('div');
-                separator.style.cssText = 'height: 1px; background: var(--border-color); margin: 0.5rem 0;';
-                userDropdownMenu.appendChild(separator);
-                
-                // Add "צפייה משותפת" option
-                const sharedOption = document.createElement('div');
-                sharedOption.className = 'multiselect-option';
-                sharedOption.style.cssText = 'background: rgba(102, 126, 234, 0.1); font-weight: 500;';
-                sharedOption.onclick = () => selectSharedViewing();
-                sharedOption.innerHTML = `
-                    <input type="checkbox" class="multiselect-checkbox" value="shared_viewing" style="accent-color: var(--info-color);">
-                    <span style="color: var(--info-color);">צפייה משותפת (כולם)</span>
-                `;
-                userDropdownMenu.appendChild(sharedOption);
-                
-            } catch (error) {
-                console.error('Error loading users:', error);
-                showToast('שגיאה בטעינת המשתמשים', 'error');
-            }
-        }
+async function loadAllUsers() {
+    try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('id, username, full_name');
         
+        if (error) throw error;
+        
+        allUsers = data || [];
+        
+        // Populate the multi-select dropdown
+        const userDropdownMenu = document.getElementById('userDropdownMenu');
+        userDropdownMenu.innerHTML = '';
+        
+        // Add "אליי" option (current user) - keep Hebrew in UI
+        const selfOption = document.createElement('div');
+        selfOption.className = 'multiselect-option';
+        selfOption.onclick = () => toggleUserSelection('self');
+        selfOption.innerHTML = `
+            <input type="checkbox" class="multiselect-checkbox" value="self">
+            <span>אליי</span>
+        `;
+        userDropdownMenu.appendChild(selfOption);
+        
+        // Add other users
+        allUsers.forEach(user => {
+            if (user.id !== currentUser.id) {
+                const option = document.createElement('div');
+                option.className = 'multiselect-option';
+                option.onclick = () => toggleUserSelection(user.id);
+                
+                option.innerHTML = `
+                    <input type="checkbox" class="multiselect-checkbox" value="${user.id}">
+                    <span>${user.full_name || user.username || 'משתמש'}</span>
+                `;
+                
+                userDropdownMenu.appendChild(option);
+            }
+        });
+        
+        // Add separator
+        const separator = document.createElement('div');
+        separator.style.cssText = 'height: 1px; background: var(--border-color); margin: 0.5rem 0;';
+        userDropdownMenu.appendChild(separator);
+        
+        // Add "צפייה משותפת" option
+        const sharedOption = document.createElement('div');
+        sharedOption.className = 'multiselect-option';
+        sharedOption.style.cssText = 'background: rgba(102, 126, 234, 0.1); font-weight: 500;';
+        sharedOption.onclick = () => selectSharedViewing();
+        sharedOption.innerHTML = `
+            <input type="checkbox" class="multiselect-checkbox" value="shared_viewing" style="accent-color: var(--info-color);">
+            <span style="color: var(--info-color);">צפייה משותפת (כולם)</span>
+        `;
+        userDropdownMenu.appendChild(sharedOption);
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showToast('שגיאה בטעינת המשתמשים', 'error');
+    }
+}
+
         // YouTube Functions
         function isValidYouTubeUrl(url) {
             const patterns = [
@@ -2093,74 +2172,83 @@ option.innerHTML = `
         }
         
         // Content Management
-        async function addContent() {
-            if (!currentVideoData) {
-                showToast('אנא הדבק קישור YouTube תקין', 'error');
-                return;
-            }
+async function addContent() {
+    if (!currentVideoData) {
+        showToast('אנא הדבק קישור YouTube תקין', 'error');
+        return;
+    }
+    
+    const streamingUrl = document.getElementById('streamingUrl').value.trim();
+    
+    try {
+        const contentData = {
+            user_id: currentUser.id,
+            ...currentVideoData,
+            streaming_url: streamingUrl || null,
+            content_type: selectedContentType,
+            status: 'to_complete',
+            added_by_username: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+            added_by_avatar: currentUser.user_metadata?.avatar_url || null
+        };
+        
+        // Handle user assignments with proper display names
+        if (selectedUsers.length > 0) {
+            const actualUserIds = [];
+            const actualUsernames = [];
             
-            const streamingUrl = document.getElementById('streamingUrl').value.trim();
-            
-            try {
-                const contentData = {
-                    user_id: currentUser.id,
-                    ...currentVideoData,
-                    streaming_url: streamingUrl || null,
-                    content_type: selectedContentType,
-                    status: 'to_complete',
-                    added_by_username: currentUser.email.split('@')[0],
-                    added_by_avatar: currentUser.user_metadata?.avatar_url || null
-                };
-                
-                // Handle user assignments
-                if (selectedUsers.length > 0) {
-                    // Convert selected users to actual user IDs
-                    const actualUserIds = [];
-                    const actualUsernames = [];
-                    
-                    selectedUsers.forEach(selection => {
-                        if (selection === 'self') {
-                            actualUserIds.push(currentUser.id);
-                            actualUsernames.push('אליי');
-                        } else if (selection !== 'shared_viewing') {
-                            // Regular user selection
-                            actualUserIds.push(selection);
-                            const user = allUsers.find(u => u.id === selection);
-                            if (user) {
-                                actualUsernames.push(user.full_name || user.username || 'משתמש');
-                            }
-                        }
-                    });
-                    
-                    if (actualUserIds.length > 0) {
-                        contentData.assigned_to = JSON.stringify(actualUserIds);
-                        contentData.assigned_to_username = JSON.stringify(actualUsernames);
+            selectedUsers.forEach(selection => {
+                if (selection === 'self') {
+                    actualUserIds.push(currentUser.id);
+                    // Use actual user display name instead of "אליי"
+                    const currentUserDisplayName = currentUser.user_metadata?.full_name || 
+                                                 currentUser.email.split('@')[0];
+                    actualUsernames.push(currentUserDisplayName);
+                } else if (selection !== 'shared_viewing') {
+                    // Regular user selection
+                    actualUserIds.push(selection);
+                    const user = allUsers.find(u => u.id === selection);
+                    if (user) {
+                        actualUsernames.push(user.full_name || user.username || 'משתמש');
                     }
                 }
-                
-                const { data, error } = await supabase
-                    .from('user_content')
-                    .insert(contentData)
-                    .select();
-                
-                if (error) {
-                    if (error.code === '23505') {
-                        showToast('תוכן זה כבר קיים ברשימה', 'error');
-                    } else {
-                        throw error;
-                    }
-                    return;
-                }
-                
-                showToast('התוכן נוסף בהצלחה!', 'success');
-                closeAddModal();
-                await loadContent();
-                
-            } catch (error) {
-                console.error('Error adding content:', error);
-                showToast('שגיאה בהוספת התוכן', 'error');
+            });
+            
+            if (actualUserIds.length > 0) {
+                contentData.assigned_to = JSON.stringify(actualUserIds);
+                contentData.assigned_to_username = JSON.stringify(actualUsernames);
             }
         }
+        
+        const { data, error } = await supabase.auth.getSession();
+        if (!data.session) {
+            showToast('אנא התחבר מחדש', 'error');
+            showAuth();
+            return;
+        }
+        
+        const { data: insertData, error: insertError } = await supabase
+            .from('user_content')
+            .insert(contentData)
+            .select();
+        
+        if (insertError) {
+            if (insertError.code === '23505') {
+                showToast('תוכן זה כבר קיים ברשימה', 'error');
+            } else {
+                throw insertError;
+            }
+            return;
+        }
+        
+        showToast('התוכן נוסף בהצלחה!', 'success');
+        closeAddModal();
+        await loadContent();
+        
+    } catch (error) {
+        console.error('Error adding content:', error);
+        showToast('שגיאה בהוספת התוכן', 'error');
+    }
+}
 
         // Helper function for parsing assigned users
         function getAssignedUsers(item) {
@@ -2458,6 +2546,35 @@ async function addRating(contentId, rating) {
         }
     }
 }  
+// Generate interactive stars HTML
+function generateInteractiveStars(currentRating, contentId) {
+    let starsHTML = '';
+    for (let i = 1; i <= 5; i++) {
+        const filled = i <= currentRating ? 'filled' : '';
+        starsHTML += `<i class="fas fa-star interactive-star ${filled}" 
+                         data-rating="${i}" 
+                         data-content-id="${contentId}"
+                         onclick="handleStarClick(${contentId}, ${i})"></i>`;
+    }
+    return starsHTML;
+}
+// Handle star clicks
+async function handleStarClick(contentId, rating) {
+    await addRating(contentId, rating);
+    
+    // Update the interactive stars display
+    const starsContainer = document.querySelector(`[data-content-id="${contentId}"]`);
+    if (starsContainer) {
+        const stars = starsContainer.querySelectorAll('.interactive-star');
+        stars.forEach((star, index) => {
+            if (index + 1 <= rating) {
+                star.classList.add('filled');
+            } else {
+                star.classList.remove('filled');
+            }
+        });
+    }
+}
 function renderContent(items) {
     const grid = document.getElementById('contentGrid');
     
@@ -2517,6 +2634,7 @@ function renderContent(items) {
             const contentRatings = getRatingsForContent(item.id);
             const averageRating = calculateAverageRating(contentRatings);
             const userRatingsHTML = generateUserRatingsHTML(contentRatings);
+            const currentUserRating = contentRatings.find(r => r.user_id === currentUser.id);
             
             ratingToggleHtml = `
                 <button class="card-rating-toggle" onclick="toggleCardFlip('${item.id}')" title="הצג דירוגים">
@@ -2540,6 +2658,14 @@ function renderContent(items) {
                                 ${generateStarsHTML(averageRating)}
                             </div>
                             <span class="rating-value">${averageRating.toFixed(1)}</span>
+                        </div>
+
+                        <!-- Interactive Rating Section -->
+                        <div class="user-rating-section">
+                            <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 0.9rem;">דרג את התוכן:</h4>
+                            <div class="interactive-rating" data-content-id="${item.id}">
+                                ${generateInteractiveStars(currentUserRating?.rating || 0, item.id)}
+                            </div>
                         </div>
                         
                         <div class="user-ratings">
@@ -2612,7 +2738,7 @@ function renderContent(items) {
             </div>
         `;
     }).join('');
-}       
+}
 
 
 function handleThumbnailClick(content) {
