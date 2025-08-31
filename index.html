@@ -2385,9 +2385,7 @@ async function loadRatingsData() {
             user_profiles: usersMap[rating.user_id] || null
         }));
         
-        console.log('Loaded ratings:', allRatings);
-        
-    } catch (error) {
+        } catch (error) {
         console.error('Error in loadRatingsData:', error);
         allRatings = [];
     }
@@ -2465,8 +2463,6 @@ function generateUserRatingsHTML(contentRatings) {
 
 // Add rating functionality to content
 async function addRating(contentId, rating) {
-    console.log(`Attempting to add rating: contentId=${contentId}, rating=${rating}`);
-    
     try {
         // Check current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -2478,10 +2474,7 @@ async function addRating(contentId, rating) {
             return;
         }
 
-        console.log('Session valid, proceeding with rating...');
-
         // Check if user already rated this content
-        console.log('Checking for existing rating...');
         const { data: existingRating, error: fetchError } = await supabase
             .from('user_content_ratings')
             .select('*')
@@ -2495,11 +2488,8 @@ async function addRating(contentId, rating) {
             return;
         }
 
-        console.log('Existing rating:', existingRating);
-        
         if (existingRating) {
             // Update existing rating
-            console.log('Updating existing rating...');
             const { data, error } = await supabase
                 .from('user_content_ratings')
                 .update({ rating })
@@ -2510,11 +2500,9 @@ async function addRating(contentId, rating) {
                 console.error('Update error:', error);
                 throw error;
             }
-            console.log('Rating updated successfully:', data);
             showToast('הדירוג עודכן בהצלחה!', 'success');
         } else {
             // Insert new rating
-            console.log('Inserting new rating...');
             const { data, error } = await supabase
                 .from('user_content_ratings')
                 .insert({
@@ -2528,12 +2516,10 @@ async function addRating(contentId, rating) {
                 console.error('Insert error:', error);
                 throw error;
             }
-            console.log('Rating inserted successfully:', data);
             showToast('דירוג נוסף בהצלחה!', 'success');
         }
         
         // Reload ratings data
-        console.log('Reloading ratings data...');
         await loadRatingsData();
         
         // Update the specific card's rating display immediately
