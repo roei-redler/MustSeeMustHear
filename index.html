@@ -2342,39 +2342,56 @@ async function loadContent() {
             document.getElementById('seriesBadge').textContent = getFilteredCount(currentAssignmentFilter, 'series');
             document.getElementById('musicBadge').textContent = getFilteredCount(currentAssignmentFilter, 'music');
         }
-// Rating Feature Variables
+        
+        // Rating Feature Variables
 let isRatingViewActive = false;
 let allRatings = [];
 
 // Initialize rating data loading
 async function loadRatingsData() {
     try {
-        const { data, error } = await supabase
-            .from('user_ratings')
-            .select(`
-                *,
-                user_profiles:user_id (
-                    username,
-                    full_name
-                )
-            `);
+        // First, let's just get the ratings without joins to test the table
+        const { data: ratingsData, error: ratingsError } = await supabase
+            .from('user_content_ratings')
+            .select('*');
         
-        if (error) throw error;
+        if (ratingsError) {
+            console.error('Error loading ratings:', ratingsError);
+            // If table doesn't exist, create empty array
+            allRatings = [];
+            return;
+        }
         
-        allRatings = data || [];
+        // Then get user profiles separately
+        const { data: usersData, error: usersError } = await supabase
+            .from('user_profiles')
+            .select('id, username, full_name');
+        
+        if (usersError) {
+            console.error('Error loading user profiles:', usersError);
+        }
+        
+        // Manually join the data
+        const usersMap = {};
+        if (usersData) {
+            usersData.forEach(user => {
+                usersMap[user.id] = user;
+            });
+        }
+        
+        // Add user profile info to ratings
+        allRatings = (ratingsData || []).map(rating => ({
+            ...rating,
+            user_profiles: usersMap[rating.user_id] || null
+        }));
+        
+        console.log('Loaded ratings:', allRatings);
         
     } catch (error) {
-        console.error('Error loading ratings:', error);
+        console.error('Error in loadRatingsData:', error);
+        allRatings = [];
     }
 }
-
-
-
-
-
-
-
-
 
 // Get ratings for specific content
 function getRatingsForContent(contentId) {
@@ -2388,14 +2405,39 @@ function calculateAverageRating(contentRatings) {
     return total / contentRatings.length;
 }
 
-// Generate stars HTML
+// Generate stars HTML RTL
 function generateStarsHTML(rating, className = 'star') {
     let starsHTML = '';
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 5; i >= 1; i--) {
         const filled = i <= rating ? 'filled' : '';
         starsHTML += `<i class="fas fa-star ${className} ${filled}"></i>`;
     }
     return starsHTML;
+}
+async function updateCardRatingDisplay(contentId) {
+    const card = document.getElementById(`card-${contentId}`);
+    if (!card) return;
+    
+    const contentRatings = getRatingsForContent(contentId);
+    const averageRating = calculateAverageRating(contentRatings);
+    const userRatingsHTML = generateUserRatingsHTML(contentRatings);
+    
+    // Update average rating
+    const averageRatingElement = card.querySelector('.average-rating .rating-stars');
+    const averageValueElement = card.querySelector('.rating-value');
+    
+    if (averageRatingElement) {
+        averageRatingElement.innerHTML = generateStarsHTML(averageRating);
+    }
+    if (averageValueElement) {
+        averageValueElement.textContent = averageRating.toFixed(1);
+    }
+    
+    // Update user ratings list
+    const userRatingsElement = card.querySelector('.user-ratings');
+    if (userRatingsElement) {
+        userRatingsElement.innerHTML = userRatingsHTML;
+    }
 }
 
 // Generate user ratings HTML
@@ -2420,50 +2462,104 @@ function generateUserRatingsHTML(contentRatings) {
     }).join('');
 }
 
+
 // Add rating functionality to content
 async function addRating(contentId, rating) {
+    console.log(`Attempting to add rating: contentId=${contentId}, rating=${rating}`);
+    
     try {
+        // Check current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+            console.error('Session error:', sessionError);
+            showToast('אנא התחבר מחדש', 'error');
+            showAuth();
+            return;
+        }
+
+        console.log('Session valid, proceeding with rating...');
+
         // Check if user already rated this content
-        const { data: existingRating } = await supabase
-            .from('user_ratings')
+        console.log('Checking for existing rating...');
+        const { data: existingRating, error: fetchError } = await supabase
+            .from('user_content_ratings')
             .select('*')
             .eq('content_id', contentId)
             .eq('user_id', currentUser.id)
-            .single();
+            .maybeSingle();
+        
+        if (fetchError) {
+            console.error('Error fetching existing rating:', fetchError);
+            showToast('שגיאה בבדיקת דירוג קיים', 'error');
+            return;
+        }
+
+        console.log('Existing rating:', existingRating);
         
         if (existingRating) {
             // Update existing rating
-            const { error } = await supabase
-                .from('user_ratings')
+            console.log('Updating existing rating...');
+            const { data, error } = await supabase
+                .from('user_content_ratings')
                 .update({ rating })
-                .eq('id', existingRating.id);
+                .eq('id', existingRating.id)
+                .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('Update error:', error);
+                throw error;
+            }
+            console.log('Rating updated successfully:', data);
             showToast('הדירוג עודכן בהצלחה!', 'success');
         } else {
             // Insert new rating
-            const { error } = await supabase
-                .from('user_ratings')
+            console.log('Inserting new rating...');
+            const { data, error } = await supabase
+                .from('user_content_ratings')
                 .insert({
                     user_id: currentUser.id,
                     content_id: contentId,
                     rating
-                });
+                })
+                .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('Insert error:', error);
+                throw error;
+            }
+            console.log('Rating inserted successfully:', data);
             showToast('דירוג נוסף בהצלחה!', 'success');
         }
         
+        // Reload ratings data
+        console.log('Reloading ratings data...');
         await loadRatingsData();
+        
+        // Update the specific card's rating display immediately
+        await updateCardRatingDisplay(contentId);
+        
+        // Refresh content if needed (for overall content display)
         if (isRatingViewActive) {
-            filterContent(); // Refresh the display
+            filterContent();
         }
         
     } catch (error) {
-        console.error('Error adding rating:', error);
-        showToast('שגיאה בשמירת הדירוג', 'error');
+        console.error('Error in addRating:', error);
+        
+        // Provide specific error messages
+        if (error.code === '23503') {
+            showToast('שגיאה: תוכן לא נמצא', 'error');
+        } else if (error.code === '42501') {
+            showToast('אין הרשאה לדרג תוכן זה', 'error');
+        } else if (error.code === '42P01') {
+            showToast('שגיאה: טבלת הדירוגים לא נמצאה', 'error');
+        } else {
+            showToast(`שגיאה בשמירת הדירוג: ${error.message}`, 'error');
+        }
     }
 }
+
         // Filter status indicator
         function updateFilterStatusIndicator() {
             const filterStatus = document.getElementById('filterStatus');
@@ -2549,32 +2645,41 @@ async function addRating(contentId, rating) {
 // Generate interactive stars HTML
 function generateInteractiveStars(currentRating, contentId) {
     let starsHTML = '';
-    for (let i = 1; i <= 5; i++) {
-        const filled = i <= currentRating ? 'filled' : '';
-        starsHTML += `<i class="fas fa-star interactive-star ${filled}" 
-                         data-rating="${i}" 
-                         data-content-id="${contentId}"
-                         onclick="handleStarClick(${contentId}, ${i})"></i>`;
-    }
+for (let i = 5; i >= 1; i--) {
+    const filled = i <= currentRating ? 'filled' : '';
+    starsHTML += `<i class="fas fa-star interactive-star ${filled}" 
+                     data-rating="${i}" 
+                     data-content-id="${contentId}"
+                     onclick="handleStarClick('${contentId}', ${i})"></i>`;
+}
+
     return starsHTML;
 }
+
 // Handle star clicks
 async function handleStarClick(contentId, rating) {
     await addRating(contentId, rating);
     
-    // Update the interactive stars display
+    // Update the interactive stars display immediately
     const starsContainer = document.querySelector(`[data-content-id="${contentId}"]`);
     if (starsContainer) {
         const stars = starsContainer.querySelectorAll('.interactive-star');
-        stars.forEach((star, index) => {
-            if (index + 1 <= rating) {
+        stars.forEach((star) => {
+            const starRating = parseInt(star.getAttribute('data-rating'));
+            if (starRating <= rating) {
                 star.classList.add('filled');
             } else {
                 star.classList.remove('filled');
             }
         });
+        
+        // Update the data attribute for the current rating
+        starsContainer.setAttribute('data-current-rating', rating);
     }
 }
+
+
+
 function renderContent(items) {
     const grid = document.getElementById('contentGrid');
     
