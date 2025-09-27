@@ -957,6 +957,11 @@
             background: rgba(70, 211, 105, 0.2);
             color: #46d369;
         }
+
+        .content-type-badge.book {
+            background: rgba(255, 165, 0, 0.2);
+            color: #ffa500;
+        }
         
         .card-channel {
             color: var(--text-secondary);
@@ -1478,6 +1483,26 @@
 .interactive-rating .interactive-star:hover ~ .interactive-star {
     color: #ffc107;
 }
+
+.card-front {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure it takes full height of the flip container */
+}
+
+.card-body {
+    flex: 1; /* This will make the card-body expand to fill available space */
+    display: flex;
+    flex-direction: column;
+}
+
+.card-info {
+    flex: 1; /* This pushes the footer down */
+}
+
+.card-footer {
+    margin-top: auto; /* This ensures the footer sticks to the bottom */
+}
     </style>
 </head>
 <body>
@@ -1616,6 +1641,10 @@
                             <i class="fas fa-music"></i> מוזיקה
                             <span class="tab-badge" id="musicBadge">0</span>
                         </button>
+                        <button class="sub-tab" data-filter="book" onclick="switchSubTab('book')">
+                            <i class="fas fa-book"></i> ספרים
+                            <span class="tab-badge" id="bookBadge">0</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -1656,12 +1685,20 @@
 
             <div class="input-group">
                 <label class="input-label">קישור לצפייה ישירה</label>
-                <input type="url" 
-                       class="youtube-input" 
-                       id="streamingUrl" 
+                <input type="url"
+                       class="youtube-input"
+                       id="streamingUrl"
                        placeholder="קישור לאתר סטרימינג או צפייה ישירה (אופציונלי)">
             </div>
-            
+
+            <div class="input-group book-url-group" style="display: none;">
+                <label class="input-label">קישור לספר מ-e-vrit.co.il</label>
+                <input type="url"
+                       class="youtube-input"
+                       id="bookUrl"
+                       placeholder="הדבק כאן קישור לספר מ-e-vrit.co.il">
+            </div>
+
             <div class="input-group">
                 <label class="input-label">סוג תוכן</label>
                 <div class="content-type-selector">
@@ -1673,6 +1710,9 @@
                     </button>
                     <button class="type-btn" data-type="music">
                         <i class="fas fa-music"></i> מוזיקה
+                    </button>
+                    <button class="type-btn" data-type="book">
+                        <i class="fas fa-book"></i> ספר
                     </button>
                 </div>
             </div>
@@ -1694,6 +1734,7 @@
                 <img class="preview-thumbnail" id="previewThumbnail" src="" alt="">
                 <div class="preview-info">
                     <div class="preview-title" id="previewTitle"></div>
+                    <div class="preview-description" id="previewDescription"></div>
                     <div class="preview-meta">
                         <span id="previewChannel"></span>
                         <span id="previewDuration"></span>
@@ -1722,9 +1763,9 @@
             
             <div class="watch-options">
                 <button class="watch-option-btn" onclick="watchOnYouTube()">
-                    <i class="fab fa-youtube"></i>
+                    <i id="primaryWatchIcon" class="fab fa-youtube"></i>
                     <div>
-                        <div>צפה ב-YouTube</div>
+                        <div id="primaryWatchText">צפה ב-YouTube</div>
                         <small style="color: var(--text-secondary);">פתח בכרטיסיה חדשה</small>
                     </div>
                 </button>
@@ -1767,6 +1808,7 @@
         let currentContentTypeFilter = 'all';
         let selectedContentType = 'movie';
         let currentVideoData = null;
+        let currentBookData = null;
         let selectedUsers = [];
         let allContent = [];
         let allUsers = [];
@@ -1885,15 +1927,26 @@ function openEditModal(contentId) {
  function populateFormForEdit(content) {
     // Populate YouTube URL
     document.getElementById('youtubeUrl').value = content.youtube_url || '';
-    
+
+    // Populate book URL
+    document.getElementById('bookUrl').value = content.book_url || '';
+
     // Populate streaming URL
     document.getElementById('streamingUrl').value = content.streaming_url || '';
-    
+
     // Set content type
     document.querySelectorAll('.type-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.type === content.content_type);
     });
     selectedContentType = content.content_type;
+
+    // Show/hide book URL field based on content type
+    const bookUrlGroup = document.querySelector('.book-url-group');
+    if (content.content_type === 'book') {
+        bookUrlGroup.style.display = 'block';
+    } else {
+        bookUrlGroup.style.display = 'none';
+    }
     
     // Populate assigned users
     selectedUsers = [];
@@ -1933,17 +1986,23 @@ function openEditModal(contentId) {
 function clearModalForm() {
     document.getElementById('youtubeUrl').value = '';
     document.getElementById('streamingUrl').value = '';
+    document.getElementById('bookUrl').value = '';
     selectedUsers = [];
     updateSelectedUsersDisplay();
     updateUserCheckboxes();
     hideVideoPreview();
-    
+    hideBookPreview();
+
+    // Hide book URL field
+    document.querySelector('.book-url-group').style.display = 'none';
+
     // Reset content type to movie
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.type-btn[data-type="movie"]').classList.add('active');
     selectedContentType = 'movie';
-    
+
     currentVideoData = null;
+    currentBookData = null;
 }     
 function closeAddModal(event) {
     if (event && event.target !== event.currentTarget) return;
@@ -1961,7 +2020,19 @@ function closeAddModal(event) {
 
         function openWatchModal(content) {
             currentContentForWatch = content;
-            
+
+            // Update button text and icon based on content type
+            const primaryWatchIcon = document.getElementById('primaryWatchIcon');
+            const primaryWatchText = document.getElementById('primaryWatchText');
+
+            if (content.content_type === 'book') {
+                primaryWatchIcon.className = 'fas fa-book-open';
+                primaryWatchText.textContent = 'קרא ב-e-vrit';
+            } else {
+                primaryWatchIcon.className = 'fab fa-youtube';
+                primaryWatchText.textContent = 'צפה ב-YouTube';
+            }
+
             // Show/hide streaming option based on availability
             const streamingOption = document.getElementById('streamingOption');
             if (content.streaming_url && content.streaming_url.trim() !== '') {
@@ -1969,7 +2040,7 @@ function closeAddModal(event) {
             } else {
                 streamingOption.style.display = 'none';
             }
-            
+
             document.getElementById('watchModalOverlay').classList.add('active');
         }
         
@@ -1980,8 +2051,12 @@ function closeAddModal(event) {
         }
 
         function watchOnYouTube() {
-            if (currentContentForWatch && currentContentForWatch.youtube_url) {
-                window.open(currentContentForWatch.youtube_url, '_blank');
+            if (currentContentForWatch) {
+                if (currentContentForWatch.content_type === 'book' && currentContentForWatch.book_url) {
+                    window.open(currentContentForWatch.book_url, '_blank');
+                } else if (currentContentForWatch.youtube_url) {
+                    window.open(currentContentForWatch.youtube_url, '_blank');
+                }
             }
             closeWatchModal();
         }
@@ -2157,13 +2232,31 @@ function updateSelectedUsersDisplay() {
                     hideVideoPreview();
                 }
             }, 500));
-            
+
+            // Book URL Input Handler
+            document.getElementById('bookUrl').addEventListener('input', debounce(async (e) => {
+                const url = e.target.value;
+                if (isValidEvritUrl(url)) {
+                    await fetchBookData(url);
+                } else {
+                    hideBookPreview();
+                }
+            }, 500));
+
             // Content Type Buttons
             document.querySelectorAll('.type-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     selectedContentType = btn.dataset.type;
+
+                    // Show/hide book URL field based on content type
+                    const bookUrlGroup = document.querySelector('.book-url-group');
+                    if (btn.dataset.type === 'book') {
+                        bookUrlGroup.style.display = 'block';
+                    } else {
+                        bookUrlGroup.style.display = 'none';
+                    }
                 });
             });
             
@@ -2254,8 +2347,115 @@ async function loadAllUsers() {
                 /^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})/,
                 /^https?:\/\/(www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
             ];
-            
+
             return patterns.some(pattern => pattern.test(url));
+        }
+
+        function isValidEvritUrl(url) {
+            const pattern = /^https?:\/\/(www\.)?e-vrit\.co\.il\/Product\/\d+\/.*/;
+            console.log('Testing URL:', url);
+            console.log('Pattern match:', pattern.test(url));
+            return pattern.test(url);
+        }
+
+        async function fetchBookData(url) {
+            try {
+                console.log('Fetching book data from:', url);
+                showBookPreview('טוען נתוני ספר...', '', '', '');
+
+                // Fetch the page directly
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const html = await response.text();
+                console.log('HTML received, length:', html.length);
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // Get book image
+                const imageContainer = doc.querySelector('.book-info__product-image');
+                const img = imageContainer ? imageContainer.querySelector('img') : null;
+                const imgSrc = img ? img.src : '';
+                console.log('Image found:', !!img, 'Src:', imgSrc);
+
+                // Get book title
+                const titleElement = doc.querySelector('.general-info__headlines .headlines__book-name');
+                const title = titleElement ? titleElement.textContent.trim() : 'ספר ללא כותרת';
+                console.log('Title found:', !!titleElement, 'Title:', title);
+
+                // Get book author
+                const authorElement = doc.querySelector('.general-info__headlines .headlines__book-author a');
+                const author = authorElement ? authorElement.textContent.trim() : 'מחבר לא ידוע';
+                console.log('Author found:', !!authorElement, 'Author:', author);
+
+                if (!titleElement) {
+                    console.warn('Could not find book title element. Page structure may have changed.');
+                }
+
+                showBookPreview(title, author, imgSrc, url);
+
+            } catch (error) {
+                console.error('Error fetching book data:', error);
+                console.error('URL that failed:', url);
+                showBookPreview('שגיאה בטעינת נתוני הספר', 'נסה שוב מאוחר יותר', '', url);
+            }
+        }
+
+        function showBookPreview(title, author, imageUrl, bookUrl) {
+            // Safely update preview title
+            const titleEl = document.getElementById('previewTitle');
+            if (titleEl) {
+                titleEl.textContent = title;
+            } else {
+                console.error('previewTitle element not found');
+            }
+
+            // Safely update preview description
+            const descEl = document.getElementById('previewDescription');
+            if (descEl) {
+                descEl.textContent = `מחבר: ${author}`;
+            } else {
+                console.error('previewDescription element not found');
+            }
+
+            // Safely update thumbnail
+            const thumbnailEl = document.getElementById('previewThumbnail');
+            if (thumbnailEl) {
+                if (imageUrl) {
+                    thumbnailEl.src = imageUrl;
+                    thumbnailEl.style.display = 'block';
+                } else {
+                    thumbnailEl.style.display = 'none';
+                }
+            } else {
+                console.error('previewThumbnail element not found');
+            }
+
+            // Store book data
+            currentBookData = {
+                title: title,
+                description: `מחבר: ${author}`,
+                thumbnail: imageUrl,
+                book_url: bookUrl,
+                author: author
+            };
+
+            // Safely show preview
+            const previewEl = document.getElementById('videoPreview');
+            if (previewEl) {
+                previewEl.style.display = 'block';
+            } else {
+                console.error('videoPreview element not found');
+            }
+        }
+
+        function hideBookPreview() {
+            document.getElementById('videoPreview').style.display = 'none';
+            currentBookData = null;
         }
         
         function extractYouTubeId(url) {
@@ -2284,41 +2484,74 @@ async function updateContent() {
         showToast('שגיאה בעדכון התוכן', 'error');
         return;
     }
-    
-    // If YouTube URL changed, validate and fetch new data
-    const youtubeUrl = document.getElementById('youtubeUrl').value.trim();
-    if (youtubeUrl !== editingContent.youtube_url) {
-        if (!isValidYouTubeUrl(youtubeUrl)) {
-            showToast('אנא הדבק קישור YouTube תקין', 'error');
-            return;
-        }
-        
-        // If URL changed but we don't have new video data, try to fetch it
-        if (!currentVideoData || currentVideoData.youtube_url !== youtubeUrl) {
-            await fetchYouTubeData(youtubeUrl);
-            if (!currentVideoData) {
-                showToast('לא ניתן לטעון נתוני הסרטון החדש', 'error');
+
+    let baseData;
+
+    if (selectedContentType === 'book') {
+        // Handle book editing
+        const bookUrl = document.getElementById('bookUrl').value.trim();
+        if (bookUrl !== editingContent.book_url) {
+            if (!isValidEvritUrl(bookUrl)) {
+                showToast('אנא הדבק קישור תקין לספר מ-e-vrit.co.il', 'error');
                 return;
             }
+
+            // If URL changed but we don't have new book data, try to fetch it
+            if (!currentBookData || currentBookData.book_url !== bookUrl) {
+                await fetchBookData(bookUrl);
+                if (!currentBookData) {
+                    showToast('לא ניתן לטעון נתוני הספר החדש', 'error');
+                    return;
+                }
+            }
+        } else if (!currentBookData) {
+            // Use existing book data if URL hasn't changed
+            currentBookData = {
+                title: editingContent.title,
+                description: editingContent.description,
+                thumbnail: editingContent.thumbnail,
+                book_url: editingContent.book_url,
+                author: editingContent.author
+            };
         }
-    } else if (!currentVideoData) {
-        // Use existing video data if URL hasn't changed
-        currentVideoData = {
-            youtube_id: editingContent.youtube_id,
-            youtube_url: editingContent.youtube_url,
-            title: editingContent.title,
-            description: editingContent.description,
-            thumbnail_url: editingContent.thumbnail_url,
-            channel_name: editingContent.channel_name,
-            duration: editingContent.duration
-        };
+        baseData = currentBookData;
+    } else {
+        // Handle video editing (existing logic)
+        const youtubeUrl = document.getElementById('youtubeUrl').value.trim();
+        if (youtubeUrl !== editingContent.youtube_url) {
+            if (!isValidYouTubeUrl(youtubeUrl)) {
+                showToast('אנא הדבק קישור YouTube תקין', 'error');
+                return;
+            }
+
+            // If URL changed but we don't have new video data, try to fetch it
+            if (!currentVideoData || currentVideoData.youtube_url !== youtubeUrl) {
+                await fetchYouTubeData(youtubeUrl);
+                if (!currentVideoData) {
+                    showToast('לא ניתן לטעון נתוני הסרטון החדש', 'error');
+                    return;
+                }
+            }
+        } else if (!currentVideoData) {
+            // Use existing video data if URL hasn't changed
+            currentVideoData = {
+                youtube_id: editingContent.youtube_id,
+                youtube_url: editingContent.youtube_url,
+                title: editingContent.title,
+                description: editingContent.description,
+                thumbnail_url: editingContent.thumbnail_url,
+                channel_name: editingContent.channel_name,
+                duration: editingContent.duration
+            };
+        }
+        baseData = currentVideoData;
     }
-    
+
     const streamingUrl = document.getElementById('streamingUrl').value.trim();
-    
+
     try {
         const updateData = {
-            ...currentVideoData,
+            ...baseData,
             streaming_url: streamingUrl || null,
             content_type: selectedContentType,
         };
@@ -2440,17 +2673,28 @@ async function updateContent() {
         
         // Content Management
 async function addContent() {
-    if (!currentVideoData) {
-        showToast('אנא הדבק קישור YouTube תקין', 'error');
-        return;
+    // Validate content data based on type
+    if (selectedContentType === 'book') {
+        if (!currentBookData) {
+            showToast('אנא הדבק קישור תקין לספר מ-e-vrit.co.il', 'error');
+            return;
+        }
+    } else {
+        if (!currentVideoData) {
+            showToast('אנא הדבק קישור YouTube תקין', 'error');
+            return;
+        }
     }
-    
+
     const streamingUrl = document.getElementById('streamingUrl').value.trim();
-    
+
     try {
+        // Use appropriate data based on content type
+        const baseData = selectedContentType === 'book' ? currentBookData : currentVideoData;
+
         const contentData = {
             user_id: currentUser.id,
-            ...currentVideoData,
+            ...baseData,
             streaming_url: streamingUrl || null,
             content_type: selectedContentType,
             status: 'to_complete',
@@ -2608,6 +2852,7 @@ async function loadContent() {
             document.getElementById('movieBadge').textContent = getFilteredCount(currentAssignmentFilter, 'movie');
             document.getElementById('seriesBadge').textContent = getFilteredCount(currentAssignmentFilter, 'series');
             document.getElementById('musicBadge').textContent = getFilteredCount(currentAssignmentFilter, 'music');
+            document.getElementById('bookBadge').textContent = getFilteredCount(currentAssignmentFilter, 'book');
         }
         
         // Rating Feature Variables
@@ -3061,10 +3306,10 @@ function renderContent(items) {
                             ${ratingToggleHtml}
                             
                             <div class="card-thumbnail-wrapper" onclick="handleThumbnailClick(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                <img class="card-thumbnail" src="${item.thumbnail_url}" alt="${item.title}">
+                                <img class="card-thumbnail" src="${item.content_type === 'book' ? (item.thumbnail || '') : (item.thumbnail_url || '')}" alt="${item.title}">
                                 <div class="play-overlay">
                                     <div class="play-icon">
-                                        <i class="fas fa-play"></i>
+                                        <i class="fas ${item.content_type === 'book' ? 'fa-book-open' : 'fa-play'}"></i>
                                     </div>
                                 </div>
                             </div>
@@ -3076,7 +3321,7 @@ function renderContent(items) {
                                         <span class="content-type-badge ${item.content_type}">
                                             ${typeIcon} ${typeName}
                                         </span>
-                                        <span class="card-channel">${item.channel_name || ''}</span>
+                                        <span class="card-channel">${item.content_type === 'book' ? (item.description || '') : (item.channel_name || '')}</span>
                                     </div>
                                     ${assignedUsersHtml}
                                 </div>
@@ -3103,12 +3348,23 @@ function renderContent(items) {
 
 
 function handleThumbnailClick(content) {
-            if (content.streaming_url && content.streaming_url.trim() !== '') {
-                // Show options modal if both YouTube and streaming URLs are available
-                openWatchModal(content);
+            if (content.content_type === 'book') {
+                // For books, check if there's a streaming URL option
+                if (content.streaming_url && content.streaming_url.trim() !== '') {
+                    openWatchModal(content);
+                } else {
+                    // Open book URL directly
+                    window.open(content.book_url, '_blank');
+                }
             } else {
-                // Only YouTube URL available, open directly
-                window.open(content.youtube_url, '_blank');
+                // For videos/music
+                if (content.streaming_url && content.streaming_url.trim() !== '') {
+                    // Show options modal if both YouTube and streaming URLs are available
+                    openWatchModal(content);
+                } else {
+                    // Only YouTube URL available, open directly
+                    window.open(content.youtube_url, '_blank');
+                }
             }
         }
         
@@ -3116,16 +3372,18 @@ function handleThumbnailClick(content) {
             const icons = {
                 movie: '<i class="fas fa-film"></i>',
                 series: '<i class="fas fa-tv"></i>',
-                music: '<i class="fas fa-music"></i>'
+                music: '<i class="fas fa-music"></i>',
+                book: '<i class="fas fa-book"></i>'
             };
             return icons[type] || '';
         }
-        
+
         function getTypeName(type) {
             const names = {
                 movie: 'סרט',
                 series: 'סדרה',
-                music: 'מוזיקה'
+                music: 'מוזיקה',
+                book: 'ספר'
             };
             return names[type] || '';
         }
@@ -3263,7 +3521,7 @@ fireMultipleConfetti();
         // Updated switchSubTab function to handle both filter types
         function switchSubTab(filter) {
             const assignmentFilters = ['all', 'assigned_to_me', 'assigned_to_others', 'shared_viewing'];
-            const contentTypeFilters = ['all', 'movie', 'series', 'music'];
+            const contentTypeFilters = ['all', 'movie', 'series', 'music', 'book'];
             
             if (assignmentFilters.includes(filter)) {
                 currentAssignmentFilter = filter;
