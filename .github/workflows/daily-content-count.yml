@@ -1,0 +1,118 @@
+name: Daily Content Count
+
+on:
+  schedule:
+    # Runs daily at 9:00 AM UTC (adjust timezone as needed)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  count-content:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        npm init -y
+        npm install @supabase/supabase-js
+        
+    - name: Get content count
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      run: |
+        cat << 'EOF' > count-script.js
+        const { createClient } = require('@supabase/supabase-js');
+        
+        async function getContentCount() {
+          const supabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_ANON_KEY
+          );
+          
+          try {
+            const { count, error } = await supabase
+              .from('user_content')
+              .select('*', { count: 'exact', head: true });
+            
+            if (error) throw error;
+            
+            const date = new Date().toISOString().split('T')[0];
+            const timestamp = new Date().toISOString();
+            
+            console.log(`📊 Daily Content Count Report - ${date}`);
+            console.log(`🕒 Timestamp: ${timestamp}`);
+            console.log(`📈 Total content items: ${count}`);
+            
+            // You can also break down by status
+            const { data: toComplete, error: toCompleteError } = await supabase
+              .from('user_content')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'to_complete');
+              
+            const { data: completed, error: completedError } = await supabase
+              .from('user_content')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'completed');
+            
+            if (!toCompleteError && !completedError) {
+              console.log(`📋 To complete: ${toComplete?.length || 0}`);
+              console.log(`✅ Completed: ${completed?.length || 0}`);
+            }
+            
+            // Break down by content type
+            const contentTypes = ['movie', 'series', 'music', 'book'];
+            console.log('\n📚 Content by type:');
+            
+            for (const type of contentTypes) {
+              const { count: typeCount, error: typeError } = await supabase
+                .from('user_content')
+                .select('*', { count: 'exact', head: true })
+                .eq('content_type', type);
+                
+              if (!typeError) {
+                console.log(`  ${getTypeIcon(type)} ${type}: ${typeCount}`);
+              }
+            }
+            
+          } catch (error) {
+            console.error('❌ Error getting content count:', error);
+            process.exit(1);
+          }
+        }
+        
+        function getTypeIcon(type) {
+          const icons = {
+            movie: '🎬',
+            series: '📺', 
+            music: '🎵',
+            book: '📖'
+          };
+          return icons[type] || '📄';
+        }
+        
+        getContentCount();
+        EOF
+        
+        node count-script.js
+        
+    - name: Save count to file (optional)
+      run: |
+        mkdir -p reports
+        echo "$(date): $(node count-script.js | grep 'Total content items' | cut -d':' -f2 | tr -d ' ')" >> reports/daily-counts.txt
+        
+    - name: Commit and push report (optional)
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add reports/daily-counts.txt 2>/dev/null || true
+        git diff --staged --quiet || git commit -m "📊 Daily content count: $(date +%Y-%m-%d)"
+        git push 2>/dev/null || true
