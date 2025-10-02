@@ -1727,39 +1727,6 @@
                     </div>
 
                     <button type="submit" class="submit-btn">💖 התחבר</button>
-
-                    <div class="auth-switch">
-                        אין לך חשבון? <a onclick="switchToRegister()">הירשם כאן</a>
-                    </div>
-                </form>
-
-                <!-- Register Form -->
-                <form id="registerForm" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label">שם מלא</label>
-                        <input type="text" id="registerName" class="form-input" placeholder="הכנס שם מלא" required autocomplete="name">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">אימייל</label>
-                        <input type="email" id="registerEmail" class="form-input" placeholder="הכנס אימייל" required autocomplete="email">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">סיסמה</label>
-                        <input type="password" id="registerPassword" class="form-input" placeholder="לפחות 6 תווים" required minlength="6" autocomplete="new-password">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">אימות סיסמה</label>
-                        <input type="password" id="registerPasswordConfirm" class="form-input" placeholder="הכנס סיסמה שוב" required minlength="6" autocomplete="new-password">
-                    </div>
-
-                    <button type="submit" class="submit-btn">💕 הירשם</button>
-
-                    <div class="auth-switch">
-                        כבר יש לך חשבון? <a onclick="switchToLogin()">התחבר כאן</a>
-                    </div>
                 </form>
             </div>
         </div>
@@ -3524,12 +3491,6 @@
                 await handleLogin();
             });
 
-            // Register form
-            document.getElementById('registerForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await handleRegister();
-            });
-
             // Listen for auth state changes
             supabase.auth.onAuthStateChange((event, session) => {
                 console.log('Auth state changed:', event);
@@ -3573,71 +3534,6 @@
 
             } catch (error) {
                 console.error('Login error:', error);
-                showAuthError(getAuthErrorMessage(error));
-            } finally {
-                await hideLoader();
-            }
-        }
-
-        // Handle registration
-        async function handleRegister() {
-            const name = document.getElementById('registerName').value.trim();
-            const email = document.getElementById('registerEmail').value.trim();
-            const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('registerPasswordConfirm').value;
-
-            if (!name || !email || !password || !confirmPassword) {
-                showAuthError('אנא מלא את כל השדות');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                showAuthError('הסיסמאות אינן תואמות');
-                return;
-            }
-
-            if (password.length < 6) {
-                showAuthError('הסיסמה חייבת להכיל לפחות 6 תווים');
-                return;
-            }
-
-            showLoader('רושם משתמש חדש...', '💖');
-
-            try {
-                const { data, error } = await supabase.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            full_name: name
-                        }
-                    }
-                });
-
-                if (error) throw error;
-
-                if (data.user) {
-                    currentUser = data.user;
-
-                    // Check if email confirmation is required
-                    if (data.user.identities && data.user.identities.length === 0) {
-                        showAuthSuccess('חשבון קיים כבר! אנא התחבר.');
-                        setTimeout(() => switchToLogin(), 2000);
-                    } else if (data.session) {
-                        // Auto-confirmed, user is logged in
-                        showAuthSuccess('נרשמת בהצלחה! 💕');
-                        setTimeout(async () => {
-                            await onAuthSuccess();
-                        }, 1500);
-                    } else {
-                        // Email confirmation required
-                        showAuthSuccess('נרשמת בהצלחה! אנא אמת את האימייל שלך ולאחר מכן התחבר.');
-                        setTimeout(() => switchToLogin(), 3000);
-                    }
-                }
-
-            } catch (error) {
-                console.error('Registration error:', error);
                 showAuthError(getAuthErrorMessage(error));
             } finally {
                 await hideLoader();
@@ -3700,21 +3596,6 @@
                 const displayName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
                 userInfo.innerHTML = `<i class="fas fa-user"></i> ${displayName}`;
             }
-        }
-
-        // Switch between login and register forms
-        function switchToRegister() {
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('registerForm').style.display = 'block';
-            document.getElementById('authTitle').textContent = 'צור חשבון חדש';
-            clearAuthMessages();
-        }
-
-        function switchToLogin() {
-            document.getElementById('registerForm').style.display = 'none';
-            document.getElementById('loginForm').style.display = 'block';
-            document.getElementById('authTitle').textContent = 'התחברו לחשבון שלכם';
-            clearAuthMessages();
         }
 
         // Show/hide modals and content
