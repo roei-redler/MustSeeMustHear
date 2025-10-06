@@ -2435,48 +2435,56 @@
 
             // Update main feed post
             const postCard = document.querySelector(`[data-post-index="${postIndex}"]`);
-            if (postCard && post.images && post.images.length > 0) {
-                // Update carousel container with real images
+            if (postCard) {
                 const container = postCard.querySelector('.carousel-container');
-                if (container) {
-                    // Replace the entire carousel container with the real images
-                    container.innerHTML = `
-                        <div class="carousel" id="carousel-${postIndex}">
-                            ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
-                        </div>
-                        ${post.images.length > 1 ? `
-                            <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1)">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                            <button class="carousel-nav carousel-next" onclick="changeSlide(${postIndex}, 1)">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="carousel-indicators">
-                                ${post.images.map((_, i) => `
-                                    <div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${postIndex}, ${i})"></div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    `;
-                }
 
-                // Update action buttons to show download button
-                const actionsContainer = postCard.querySelector('.post-actions');
-                if (actionsContainer) {
-                    actionsContainer.innerHTML = `
-                        <button class="action-btn" onclick="refreshPost(${postIndex})" title="רענן פוסט">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <button class="action-btn" onclick="downloadAllImages(${postIndex})" title="הורדת כל התמונות">
-                            <i class="fas fa-download"></i>
-                        </button>
-                        <button class="action-btn" onclick="openModal(${postIndex})" title="עריכה">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="action-btn" onclick="deletePost(${postIndex})" title="מחיקה">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    `;
+                if (post.images && post.images.length > 0) {
+                    // Update carousel container with real images
+                    if (container) {
+                        // Replace the entire carousel container with the real images
+                        container.innerHTML = `
+                            <div class="carousel" id="carousel-${postIndex}">
+                                ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
+                            </div>
+                            ${post.images.length > 1 ? `
+                                <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1)">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                                <button class="carousel-nav carousel-next" onclick="changeSlide(${postIndex}, 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="carousel-indicators">
+                                    ${post.images.map((_, i) => `
+                                        <div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${postIndex}, ${i})"></div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        `;
+                    }
+
+                    // Update action buttons to show download button
+                    const actionsContainer = postCard.querySelector('.post-actions');
+                    if (actionsContainer) {
+                        actionsContainer.innerHTML = `
+                            <button class="action-btn" onclick="refreshPost(${postIndex})" title="רענן פוסט">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="action-btn" onclick="downloadAllImages(${postIndex})" title="הורדת כל התמונות">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="action-btn" onclick="openModal(${postIndex})" title="עריכה">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="action-btn" onclick="deletePost(${postIndex})" title="מחיקה">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `;
+                    }
+                } else {
+                    // No images - remove the carousel container entirely
+                    if (container) {
+                        container.remove();
+                    }
                 }
             }
 
@@ -2486,26 +2494,34 @@
                 // Check if this sidebar post matches the postIndex by checking its onclick attribute
                 if (sidebarPost.getAttribute('onclick')?.includes(`scrollToPost(${postIndex})`)) {
                     const container = sidebarPost.querySelector('.carousel-container');
-                    if (container && post.images && post.images.length > 0) {
+
+                    if (post.images && post.images.length > 0) {
                         // Replace the entire carousel container with the real images
-                        container.innerHTML = `
-                            <div class="carousel" id="sidebar-carousel-${postIndex}">
-                                ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
-                            </div>
-                            ${post.images.length > 1 ? `
-                                <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                                <button class="carousel-nav carousel-next" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, 1)" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%);">
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
-                                    ${post.images.map((_, i) => `
-                                        <div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${postIndex}, ${i})"></div>
-                                    `).join('')}
+                        if (container) {
+                            container.innerHTML = `
+                                <div class="carousel" id="sidebar-carousel-${postIndex}">
+                                    ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
                                 </div>
-                            ` : ''}
-                        `;
+                                ${post.images.length > 1 ? `
+                                    <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                    <button class="carousel-nav carousel-next" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, 1)" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%);">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
+                                        ${post.images.map((_, i) => `
+                                            <div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${postIndex}, ${i})"></div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            `;
+                        }
+                    } else {
+                        // No images - remove the carousel container entirely
+                        if (container) {
+                            container.remove();
+                        }
                     }
                 }
             });
