@@ -45,8 +45,11 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -55,7 +58,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Heebo', sans-serif;
             background-color: #fafafa;
             direction: rtl;
             text-align: right;
@@ -468,6 +471,25 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 30px;
+        }
+
+        .scroll-loader {
+            text-align: center;
+            padding: 20px;
+            color: #ff6b9d;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+
+        .scroll-loader i {
+            animation: heartBeat 1s infinite;
+            margin-left: 10px;
+            font-size: 20px;
+        }
+
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
         }
 
         .post-card {
@@ -1765,15 +1787,10 @@
 
         <!-- Feed Tab -->
         <div id="feedTab" class="tab-content active">
-            <div id="feed" class="feed">
-                <div class="empty-state">
-                    <i class="fas fa-camera"></i>
-                    <h3>אין פוסטים עדיין</h3>
-                    <p>התחל ליצור את הפוסט הראשון שלך!</p>
-                    <button class="add-post-btn" onclick="openModal()">
-                        צור פוסט חדש
-                    </button>
-                </div>
+            <div id="feed" class="feed"></div>
+            <div id="scrollLoader" class="scroll-loader" style="display: none;">
+                <i class="fas fa-heart"></i>
+                <span>טוען עוד זיכרונות...</span>
             </div>
         </div>
 
@@ -2319,18 +2336,34 @@
         }
 
         // Supabase Functions
-        async function loadPostsFromSupabase() {
-            showLoader('טוען את הזיכרונות שלכם...', '❤️ אנא המתינו רגע');
+        let postsOffset = 0;
+        const postsLimit = 5;
+        let hasMorePosts = true;
+        let isLoadingPosts = false;
+
+        async function loadPostsFromSupabase(append = false) {
+            if (isLoadingPosts || (!append && postsOffset > 0)) return;
+
+            isLoadingPosts = true;
+            const scrollLoader = document.getElementById('scrollLoader');
+
+            if (!append) {
+                showLoader('טוען את הזיכרונות שלכם...', '❤️ אנא המתינו רגע');
+            } else if (scrollLoader) {
+                scrollLoader.style.display = 'block';
+            }
+
             try {
                 const { data, error } = await supabase
                     .from('posts')
                     .select('*')
-                    .order('date_created', { ascending: false });
+                    .order('date_created', { ascending: false })
+                    .range(postsOffset, postsOffset + postsLimit - 1);
 
                 if (error) throw error;
 
                 if (data) {
-                    posts = data.map(post => ({
+                    const newPosts = data.map(post => ({
                         id: post.id,
                         title: post.title,
                         description: post.description,
@@ -2341,12 +2374,27 @@
                         date: new Date(post.date_created).toLocaleDateString('he-IL'),
                         dateCreated: post.date_created
                     }));
+
+                    if (append) {
+                        posts = [...posts, ...newPosts];
+                    } else {
+                        posts = newPosts;
+                    }
+
+                    hasMorePosts = newPosts.length === postsLimit;
+                    postsOffset += newPosts.length;
                 }
             } catch (error) {
                 console.error('Error loading posts:', error);
                 alert('שגיאה בטעינת פוסטים: ' + error.message);
             } finally {
-                await hideLoader();
+                isLoadingPosts = false;
+                if (scrollLoader) {
+                    scrollLoader.style.display = 'none';
+                }
+                if (!append) {
+                    await hideLoader();
+                }
             }
         }
 
@@ -3113,20 +3161,23 @@
             }
         }
 
-        function renderPosts() {
+        function renderPosts(append = false) {
             const feed = document.getElementById('feed');
 
             if (posts.length === 0) {
-                feed.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-camera"></i>
-                        <h3>אין פוסטים עדיין</h3>
-                        <p>התחל ליצור את הפוסט הראשון שלך!</p>
-                        <button class="add-post-btn" onclick="openModal()">
-                            צור פוסט חדש
-                        </button>
-                    </div>
-                `;
+                // Only show empty state if not currently loading initial posts
+                if (!isLoadingPosts || postsOffset > 0) {
+                    feed.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-camera"></i>
+                            <h3>אין פוסטים עדיין</h3>
+                            <p>התחל ליצור את הפוסט הראשון שלך!</p>
+                            <button class="add-post-btn" onclick="openModal()">
+                                צור פוסט חדש
+                            </button>
+                        </div>
+                    `;
+                }
                 return;
             }
 
@@ -3135,15 +3186,33 @@
                 return new Date(b.dateCreated) - new Date(a.dateCreated);
             });
 
-            feed.innerHTML = sortedPosts.map((post, index) => {
+            const postsHTML = sortedPosts.map((post, index) => {
                 const originalIndex = posts.indexOf(post);
                 return createPostHTML(post, originalIndex);
             }).join('');
+
+            if (append) {
+                feed.innerHTML += postsHTML;
+            } else {
+                feed.innerHTML = postsHTML;
+            }
 
             // Initialize carousel positions
             posts.forEach((_, index) => {
                 currentSlides[index] = 0;
             });
+        }
+
+        // Infinite scroll handler
+        function handleInfiniteScroll() {
+            const scrollPosition = window.scrollY + window.innerHeight;
+            const scrollThreshold = document.documentElement.scrollHeight - 300;
+
+            if (scrollPosition >= scrollThreshold && hasMorePosts && !isLoadingPosts) {
+                loadPostsFromSupabase(true).then(() => {
+                    renderPosts(true);
+                });
+            }
         }
 
         // Carousel Functions
@@ -3574,7 +3643,10 @@
             showMainContent();
             updateUserInfo();
 
-            // Reload posts after authentication
+            // Reset pagination and load initial posts
+            postsOffset = 0;
+            hasMorePosts = true;
+            posts = [];
             await loadPostsFromSupabase();
             renderPosts();
 
@@ -3657,6 +3729,10 @@
             setupAuthListeners();
             initializeCalendar();
             populateDefaultImages();
+
+            // Add infinite scroll listener to window
+            window.addEventListener('scroll', handleInfiniteScroll);
+
             await checkAuthStatus();
             // Posts will be loaded in onAuthSuccess after authentication
         });
