@@ -473,20 +473,6 @@
             gap: 30px;
         }
 
-        .scroll-loader {
-            text-align: center;
-            padding: 20px;
-            color: #ff6b9d;
-            font-size: 16px;
-            margin: 20px 0;
-        }
-
-        .scroll-loader i {
-            animation: heartBeat 1s infinite;
-            margin-left: 10px;
-            font-size: 20px;
-        }
-
         @keyframes heartBeat {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.2); }
@@ -1788,10 +1774,6 @@
         <!-- Feed Tab -->
         <div id="feedTab" class="tab-content active">
             <div id="feed" class="feed"></div>
-            <div id="scrollLoader" class="scroll-loader" style="display: none;">
-                <i class="fas fa-heart"></i>
-                <span>טוען עוד זיכרונות...</span>
-            </div>
         </div>
 
         <!-- Calendar Tab -->
@@ -2336,66 +2318,148 @@
         }
 
         // Supabase Functions
-        let postsOffset = 0;
-        const postsLimit = 5;
-        let hasMorePosts = true;
         let isLoadingPosts = false;
 
-        async function loadPostsFromSupabase(append = false) {
-            if (isLoadingPosts || (!append && postsOffset > 0)) return;
+        async function loadPostsFromSupabase() {
+            if (isLoadingPosts) return;
 
             isLoadingPosts = true;
-            const scrollLoader = document.getElementById('scrollLoader');
-
-            if (!append) {
-                showLoader('טוען את הזיכרונות שלכם...', '❤️ אנא המתינו רגע');
-            } else if (scrollLoader) {
-                scrollLoader.style.display = 'block';
-            }
+            showLoader('טוען את הזיכרונות שלכם...', '❤️ אנא המתינו רגע');
 
             try {
+                // Load ALL posts without images for faster initial load
                 const { data, error } = await supabase
                     .from('posts')
-                    .select('*')
-                    .order('date_created', { ascending: false })
-                    .range(postsOffset, postsOffset + postsLimit - 1);
+                    .select('id, title, description, location, location_data, hashtags, date_created')
+                    .order('date_created', { ascending: false });
 
                 if (error) throw error;
 
                 if (data) {
-                    const newPosts = data.map(post => ({
+                    posts = data.map(post => ({
                         id: post.id,
                         title: post.title,
                         description: post.description,
                         location: post.location,
                         locationData: post.location_data,
-                        images: post.images || [],
+                        images: null, // Will be lazy-loaded
                         hashtags: post.hashtags || [],
                         date: new Date(post.date_created).toLocaleDateString('he-IL'),
                         dateCreated: post.date_created
                     }));
 
-                    if (append) {
-                        posts = [...posts, ...newPosts];
-                    } else {
-                        posts = newPosts;
-                    }
-
-                    hasMorePosts = newPosts.length === postsLimit;
-                    postsOffset += newPosts.length;
+                    // Lazy load ALL images after posts are displayed
+                    lazyLoadPostImages();
                 }
             } catch (error) {
                 console.error('Error loading posts:', error);
                 alert('שגיאה בטעינת פוסטים: ' + error.message);
             } finally {
                 isLoadingPosts = false;
-                if (scrollLoader) {
-                    scrollLoader.style.display = 'none';
+                await hideLoader();
+            }
+        }
+
+        // Lazy load images for all posts
+        async function lazyLoadPostImages() {
+            try {
+                // Fetch ALL images at once
+                const { data, error } = await supabase
+                    .from('posts')
+                    .select('id, images')
+                    .order('date_created', { ascending: false });
+
+                if (error) throw error;
+
+                if (data) {
+                    data.forEach(postData => {
+                        const postIndex = posts.findIndex(p => p.id === postData.id);
+                        if (postIndex !== -1) {
+                            posts[postIndex].images = postData.images || [];
+                            // Re-render this specific post after images are loaded
+                            updatePostImages(postIndex);
+                        }
+                    });
                 }
-                if (!append) {
-                    await hideLoader();
+            } catch (error) {
+                console.error('Error lazy loading images:', error);
+                // Show error in all placeholders
+                showImageLoadError();
+            }
+        }
+
+        // Show error message in image placeholders
+        function showImageLoadError() {
+            const placeholders = document.querySelectorAll('.image-placeholder');
+            placeholders.forEach(placeholder => {
+                placeholder.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: rgba(255,255,255,0.7);"></i>
+                    <span style="color: rgba(255,255,255,0.9); font-size: 16px;">כשלון טעינת תמונות</span>
+                `;
+                placeholder.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+            });
+        }
+
+        // Update a single post's images in the DOM
+        function updatePostImages(postIndex) {
+            const post = posts[postIndex];
+
+            // Update main feed post
+            const postCard = document.querySelector(`[data-post-index="${postIndex}"]`);
+            if (postCard && post.images && post.images.length > 0) {
+                const container = postCard.querySelector('.carousel-container');
+                if (container) {
+                    // Replace the entire carousel container with the real images
+                    container.innerHTML = `
+                        <div class="carousel" id="carousel-${postIndex}">
+                            ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
+                        </div>
+                        ${post.images.length > 1 ? `
+                            <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1)">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <button class="carousel-nav carousel-next" onclick="changeSlide(${postIndex}, 1)">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="carousel-indicators">
+                                ${post.images.map((_, i) => `
+                                    <div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${postIndex}, ${i})"></div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    `;
                 }
             }
+
+            // Update sidebar post (if it exists)
+            const sidebarPosts = document.querySelectorAll('.sidebar-post-card');
+            sidebarPosts.forEach(sidebarPost => {
+                // Check if this sidebar post matches the postIndex by checking its onclick attribute
+                if (sidebarPost.getAttribute('onclick')?.includes(`scrollToPost(${postIndex})`)) {
+                    const container = sidebarPost.querySelector('.carousel-container');
+                    if (container && post.images && post.images.length > 0) {
+                        // Replace the entire carousel container with the real images
+                        container.innerHTML = `
+                            <div class="carousel" id="sidebar-carousel-${postIndex}">
+                                ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
+                            </div>
+                            ${post.images.length > 1 ? `
+                                <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                                <button class="carousel-nav carousel-next" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, 1)" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%);">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
+                                    ${post.images.map((_, i) => `
+                                        <div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${postIndex}, ${i})"></div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        `;
+                    }
+                }
+            });
         }
 
         async function savePostToSupabase(post) {
@@ -2675,7 +2739,14 @@
                         </div>
                     </div>
 
-                    ${post.images.length > 0 ? `
+                    ${post.images === null ? `
+                        <div class="carousel-container" style="position: relative;">
+                            <div class="image-placeholder" style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; gap: 10px;">
+                                <i class="fas fa-image" style="font-size: 48px; color: rgba(255,255,255,0.5);"></i>
+                                <span style="color: rgba(255,255,255,0.9); font-size: 14px;">תמונות בטעינה</span>
+                            </div>
+                        </div>
+                    ` : post.images.length > 0 ? `
                         <div class="carousel-container" style="position: relative;">
                             <div class="carousel" id="sidebar-carousel-${index}">
                                 ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${index}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
@@ -2983,7 +3054,7 @@
             document.getElementById('postDate').value = postDate.toISOString().split('T')[0];
 
             selectedLocation = post.locationData || null;
-            selectedImages = [...post.images];
+            selectedImages = post.images ? [...post.images] : [];
             selectedHashtags = [...post.hashtags];
             updateImagePreview();
             updateHashtagsDisplay();
@@ -3043,7 +3114,7 @@
                             <div class="post-date">${post.date}</div>
                         </div>
                         <div class="post-actions">
-                            ${post.images.length > 0 ? `
+                            ${post.images && post.images.length > 0 ? `
                                 <button class="action-btn" onclick="downloadAllImages(${index})" title="הורדת כל התמונות">
                                     <i class="fas fa-download"></i>
                                 </button>
@@ -3056,8 +3127,15 @@
                             </button>
                         </div>
                     </div>
-                    
-                    ${post.images.length > 0 ? `
+
+                    ${post.images === null ? `
+                        <div class="carousel-container">
+                            <div class="image-placeholder" style="height: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; margin: 16px 0; gap: 15px;">
+                                <i class="fas fa-image" style="font-size: 64px; color: rgba(255,255,255,0.5);"></i>
+                                <span style="color: rgba(255,255,255,0.9); font-size: 16px;">תמונות בטעינה</span>
+                            </div>
+                        </div>
+                    ` : post.images.length > 0 ? `
                         <div class="carousel-container">
                             <div class="carousel" id="carousel-${index}">
                                 ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="openImageViewer(${index}, ${imgIndex})" style="cursor: pointer;">`).join('')}
@@ -3077,7 +3155,7 @@
                             ` : ''}
                         </div>
                     ` : ''}
-                    
+
                     <div class="post-content">
                         ${generateDescriptionHTML(post.description, index)}
                         ${post.location ? `
@@ -3166,7 +3244,7 @@
 
             if (posts.length === 0) {
                 // Only show empty state if not currently loading initial posts
-                if (!isLoadingPosts || postsOffset > 0) {
+                if (!isLoadingPosts) {
                     feed.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-camera"></i>
@@ -3203,17 +3281,6 @@
             });
         }
 
-        // Infinite scroll handler
-        function handleInfiniteScroll() {
-            const scrollPosition = window.scrollY + window.innerHeight;
-            const scrollThreshold = document.documentElement.scrollHeight - 300;
-
-            if (scrollPosition >= scrollThreshold && hasMorePosts && !isLoadingPosts) {
-                loadPostsFromSupabase(true).then(() => {
-                    renderPosts(true);
-                });
-            }
-        }
 
         // Carousel Functions
         function changeSlide(postIndex, direction) {
@@ -3643,9 +3710,7 @@
             showMainContent();
             updateUserInfo();
 
-            // Reset pagination and load initial posts
-            postsOffset = 0;
-            hasMorePosts = true;
+            // Load all posts
             posts = [];
             await loadPostsFromSupabase();
             renderPosts();
@@ -3729,9 +3794,6 @@
             setupAuthListeners();
             initializeCalendar();
             populateDefaultImages();
-
-            // Add infinite scroll listener to window
-            window.addEventListener('scroll', handleInfiniteScroll);
 
             await checkAuthStatus();
             // Posts will be loaded in onAuthSuccess after authentication
