@@ -2038,6 +2038,31 @@
         let initialDistance = 0;
         let initialZoom = 1;
 
+        // Helper function to extract image source from either string or object format
+        function getImageSrc(img) {
+            if (!img) {
+                return '';
+            }
+
+            if (typeof img === 'string') {
+                return img;
+            }
+
+            // Deep unwrap nested objects (handles corrupted data)
+            let unwrapped = img;
+            let maxDepth = 20;
+            while (maxDepth-- > 0 && unwrapped && typeof unwrapped === 'object' && unwrapped.data) {
+                unwrapped = unwrapped.data;
+            }
+
+            // Return the final unwrapped value
+            if (typeof unwrapped === 'string') {
+                return unwrapped;
+            }
+
+            return '';
+        }
+
         // Default predefined images - Love, Couple, Chill, Fun themed
         const defaultImages = [
             'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80', // Couple holding hands
@@ -2389,31 +2414,118 @@
             }
         }
 
-        // Lazy load images for all posts
-        async function lazyLoadPostImages() {
-            try {
-                // Fetch ALL images at once
-                const { data, error } = await supabase
-                    .from('posts')
-                    .select('id, images')
-                    .order('date_created', { ascending: false });
+        // Migrate old format images to new format with format property
+        async function migrateImageFormat(images, postId) {
+            if (!images || images.length === 0) {
+                return [];
+            }
 
-                if (error) throw error;
+            let needsUpdate = false;
+            const migratedImages = [];
 
-                if (data) {
-                    data.forEach(postData => {
-                        const postIndex = posts.findIndex(p => p.id === postData.id);
-                        if (postIndex !== -1) {
-                            posts[postIndex].images = postData.images || [];
-                            // Re-render this specific post after images are loaded
-                            updatePostImages(postIndex);
-                        }
-                    });
+            for (let i = 0; i < images.length; i++) {
+                let img = images[i];
+
+                // If it's a JSON string, parse it first
+                if (typeof img === 'string' && (img.startsWith('{') || img.startsWith('\"{'))) {
+                    try {
+                        img = JSON.parse(img);
+                    } catch (e) {
+                        // Parsing failed, skip
+                    }
                 }
-            } catch (error) {
-                console.error('Error lazy loading images:', error);
-                // Show error in all placeholders
-                showImageLoadError();
+
+                // Deep unwrap recursively nested objects (handles both objects and JSON strings)
+                let unwrapped = img;
+                let maxDepth = 20;
+                let depth = 0;
+                while (maxDepth-- > 0 && unwrapped) {
+                    if (typeof unwrapped === 'object' && unwrapped.data) {
+                        depth++;
+                        unwrapped = unwrapped.data;
+                        // Try parsing if it's a JSON string
+                        if (typeof unwrapped === 'string' && (unwrapped.startsWith('{') || unwrapped.startsWith('\"{'))) {
+                            try {
+                                unwrapped = JSON.parse(unwrapped);
+                            } catch (e) {
+                                break;
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                // Now unwrapped is either a string or we've hit max depth
+                if (typeof unwrapped === 'string' && unwrapped.startsWith('data:image')) {
+                    // Valid base64 image - check if original img was already in the correct format
+                    if (depth === 0 && typeof img === 'object' && img.format === 'jxl' && typeof img.data === 'string' && img.data.startsWith('data:image')) {
+                        // Already migrated correctly, no nested corruption
+                        migratedImages.push(img);
+                    } else {
+                        // Needs migration - either old format or corrupted nested format
+                        needsUpdate = true;
+                        migratedImages.push({
+                            data: unwrapped,
+                            format: 'jxl'
+                        });
+                    }
+                }
+            }
+
+            // Update in Supabase if migration occurred
+            if (needsUpdate && migratedImages.length > 0) {
+                try {
+                    await supabase
+                        .from('posts')
+                        .update({ images: migratedImages })
+                        .eq('id', postId);
+                } catch (error) {
+                    // Update failed, but continue
+                }
+            }
+
+            return migratedImages;
+        }
+
+        // Lazy load images for all posts - one at a time to prevent timeout
+        async function lazyLoadPostImages() {
+            // Load images one post at a time to avoid timeout
+            for (let i = 0; i < posts.length; i++) {
+                try {
+                    const post = posts[i];
+
+                    // Fetch images for this specific post only
+                    const { data, error } = await supabase
+                        .from('posts')
+                        .select('id, images')
+                        .eq('id', post.id)
+                        .single();
+
+                    if (error) {
+                        posts[i].images = [];
+                        updatePostImages(i);
+                        continue;
+                    }
+
+                    if (data && data.images) {
+                        // Migrate images if needed
+                        const migratedImages = await migrateImageFormat(data.images, data.id);
+                        posts[i].images = migratedImages;
+                        // Re-render this specific post after images are loaded
+                        updatePostImages(i);
+                    } else {
+                        posts[i].images = [];
+                        updatePostImages(i);
+                    }
+
+                    // Small delay between requests to avoid overwhelming the server
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                } catch (error) {
+                    posts[i].images = [];
+                    updatePostImages(i);
+                }
             }
         }
 
@@ -2444,7 +2556,7 @@
                         // Replace the entire carousel container with the real images
                         container.innerHTML = `
                             <div class="carousel" id="carousel-${postIndex}">
-                                ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
+                                ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
                             </div>
                             ${post.images.length > 1 ? `
                                 <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1)">
@@ -2823,7 +2935,7 @@
                     ` : post.images.length > 0 ? `
                         <div class="carousel-container" style="position: relative;">
                             <div class="carousel" id="sidebar-carousel-${index}">
-                                ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${index}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
+                                ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${index}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
                             </div>
                             ${post.images.length > 1 ? `
                                 <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${index}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
@@ -2914,24 +3026,71 @@
             processImages(files);
         }
 
-        function processImages(files) {
-            files.forEach(file => {
+        async function convertImageToJXL(base64Image) {
+            try {
+                const img = new Image();
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = base64Image;
+                });
+
+                // Calculate new dimensions - limit to max 1200px on longest side
+                const MAX_DIMENSION = 1200;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                    if (width > height) {
+                        height = Math.round((height * MAX_DIMENSION) / width);
+                        width = MAX_DIMENSION;
+                    } else {
+                        width = Math.round((width * MAX_DIMENSION) / height);
+                        height = MAX_DIMENSION;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to WebP with 0.85 quality
+                const webpBase64 = canvas.toDataURL('image/webp', 0.85);
+
+                return webpBase64;
+            } catch (error) {
+                return base64Image;
+            }
+        }
+
+        async function processImages(files) {
+            for (const file of files) {
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        selectedImages.push(e.target.result);
+                    reader.onload = async function(e) {
+                        // Convert to JXL format (WebP in practice)
+                        const convertedImage = await convertImageToJXL(e.target.result);
+                        selectedImages.push({
+                            data: convertedImage,
+                            format: 'jxl' // Mark as converted format
+                        });
                         updateImagePreview();
                     };
                     reader.readAsDataURL(file);
                 }
-            });
+            }
         }
 
         function updateImagePreview() {
             const preview = document.getElementById('imagePreview');
             preview.innerHTML = selectedImages.map((img, index) => `
                 <div class="preview-item">
-                    <img src="${img}" class="preview-img">
+                    <img src="${getImageSrc(img)}" class="preview-img">
                     <button type="button" class="remove-img" onclick="removeImage(${index})">×</button>
                 </div>
             `).join('');
@@ -3013,9 +3172,16 @@
             `).join('');
         }
 
-        function selectDefaultImage(imageUrl) {
-            if (!selectedImages.includes(imageUrl)) {
-                selectedImages.push(imageUrl);
+        async function selectDefaultImage(imageUrl) {
+            const alreadySelected = selectedImages.some(img => getImageSrc(img) === imageUrl);
+
+            if (!alreadySelected) {
+                // Convert default image to JXL format
+                const convertedImage = await convertImageToJXL(imageUrl);
+                selectedImages.push({
+                    data: convertedImage,
+                    format: 'jxl'
+                });
                 updateImagePreview();
 
                 // Add visual feedback
@@ -3221,7 +3387,7 @@
                     ` : post.images.length > 0 ? `
                         <div class="carousel-container">
                             <div class="carousel" id="carousel-${index}">
-                                ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="openImageViewer(${index}, ${imgIndex})" style="cursor: pointer;">`).join('')}
+                                ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${index}, ${imgIndex})" style="cursor: pointer;">`).join('')}
                             </div>
                             ${post.images.length > 1 ? `
                                 <button class="carousel-nav carousel-prev" onclick="changeSlide(${index}, -1)">
@@ -3344,8 +3510,11 @@
             }
         }
 
-        async function downloadImage(imageUrl, filename) {
+        async function downloadImage(imageData, filename) {
             try {
+                // Extract image URL using helper function
+                const imageUrl = getImageSrc(imageData);
+
                 // If it's a base64 image
                 if (imageUrl.startsWith('data:')) {
                     const link = document.createElement('a');
@@ -3503,8 +3672,12 @@
             const prevBtn = document.getElementById('viewerPrev');
             const nextBtn = document.getElementById('viewerNext');
 
+            // Extract image source using helper function
+            const currentImage = currentViewerImages[currentViewerIndex];
+            const imgSrc = getImageSrc(currentImage);
+
             // Update main image
-            image.src = currentViewerImages[currentViewerIndex];
+            image.src = imgSrc;
 
             // Reset zoom when changing images
             resetZoom();
@@ -3520,7 +3693,7 @@
             // Update thumbnails
             if (currentViewerImages.length > 1) {
                 thumbnails.innerHTML = currentViewerImages.map((img, index) => `
-                    <img src="${img}"
+                    <img src="${getImageSrc(img)}"
                          class="viewer-thumbnail ${index === currentViewerIndex ? 'active' : ''}"
                          onclick="goToViewerImage(${index})"
                          alt="תמונה ${index + 1}">
