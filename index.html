@@ -1785,14 +1785,22 @@
     <div class="toast-container" id="toastContainer"></div>
     
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
         // Configuration
         const SUPABASE_URL = 'https://yxszxzbymtssvypumqfe.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4c3p4emJ5bXRzc3Z5cHVtcWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMjkyMjUsImV4cCI6MjA3MTkwNTIyNX0.13t1BXPqPhUaKB6xviale4DZ6cGc23dcNyKKh_0kBg0';
         const YOUTUBE_API_KEY = 'AIzaSyB9gQvaaJqer5qyv7kHP2-NfDwAnPkiQZQ';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+
+        // Save reference to Supabase library before reassigning
+        const supabaseLib = window.supabase;
+        if (!supabaseLib) {
+            console.error('Supabase library not loaded!');
+            alert('שגיאה בטעינת המערכת. אנא רענן את הדף.');
+        }
+
+        // Reassign global supabase to the client instance
+        supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         persistSession: true,
         storage: window.localStorage,
