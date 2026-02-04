@@ -2505,24 +2505,72 @@
             return migratedImages;
         }
 
-        // IntersectionObserver: only start loading images for posts that enter the viewport
+        // Priority-ordered lazy loading:
+        //   1. Build a load-order list sorted by date_created DESC (newest first).
+        //   2. IntersectionObserver marks posts as "visible".
+        //   3. A sequential processor walks the list and loads one post at a time,
+        //      only when that post is visible.  The observer re-triggers the processor
+        //      whenever a new post scrolls into view.
         function setupImageLazyLoading() {
+            // Priority order: newest post first
+            const loadOrder = posts
+                .map((post, index) => ({ index, dateCreated: post.dateCreated }))
+                .sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated))
+                .map(item => item.index);
+
+            const visibleSet = new Set();
+            let queuePos    = 0;   // current position in loadOrder
+            let busy        = false;
+
+            // Process posts in priority order, one at a time
+            async function processLoadQueue() {
+                if (busy) return;
+                busy = true;
+
+                while (queuePos < loadOrder.length) {
+                    const postIndex = loadOrder[queuePos];
+                    const post      = posts[postIndex];
+
+                    if (!post || post.images !== null) {
+                        // Already loaded or loading — skip
+                        queuePos++;
+                        continue;
+                    }
+
+                    if (!visibleSet.has(postIndex)) {
+                        // Not yet scrolled into view — stop and wait for the observer
+                        break;
+                    }
+
+                    // Load first batch for this post and wait for it to finish
+                    post.images = [];
+                    await fetchPostImagesBatch(postIndex, 0);
+                    queuePos++;
+                }
+
+                busy = false;
+            }
+
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (!entry.isIntersecting) return;
-                    const postIndex = parseInt(entry.target.getAttribute('data-post-index'));
-                    if (isNaN(postIndex)) return;
-                    const post = posts[postIndex];
-                    if (post && post.images === null) {
-                        post.images = [];  // mark as "loading started"
-                        fetchPostImagesBatch(postIndex, 0);
-                    }
+                    const idx = parseInt(entry.target.getAttribute('data-post-index'));
+                    if (!isNaN(idx)) visibleSet.add(idx);
                 });
+                // A new post became visible — resume the queue
+                processLoadQueue();
             }, { rootMargin: '300px' });
 
             document.querySelectorAll('.post-card[data-post-index]').forEach(card => {
                 observer.observe(card);
             });
+
+            // Kick off immediately for the most recent post without waiting for the observer
+            if (loadOrder.length > 0) {
+                visibleSet.add(loadOrder[0]);
+                processLoadQueue();
+            }
+
             return observer;
         }
 
