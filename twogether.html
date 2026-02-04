@@ -2710,14 +2710,48 @@
             });
         }
 
+        // Write an array of images to a post in batches via RPC.
+        // First batch replaces the column; subsequent batches append.
+        async function saveImagesBatched(postId, images) {
+            if (!images) return;
+
+            if (images.length === 0) {
+                // Explicitly clear the images column
+                const { error } = await supabase.rpc('set_post_images', {
+                    p_post_id: postId,
+                    p_images: [],
+                    p_replace: true
+                });
+                if (error) throw error;
+                return;
+            }
+
+            let isFirst = true;
+            for (let i = 0; i < images.length; i += IMAGE_BATCH_SIZE) {
+                const batch = images.slice(i, i + IMAGE_BATCH_SIZE);
+                // Serialise objects to strings so the RPC TEXT[] parameter receives plain strings
+                const batchStrings = batch.map(img => typeof img === 'string' ? img : JSON.stringify(img));
+
+                const { error } = await supabase.rpc('set_post_images', {
+                    p_post_id: postId,
+                    p_images: batchStrings,
+                    p_replace: isFirst
+                });
+
+                if (error) throw error;
+                isFirst = false;
+            }
+        }
+
         async function savePostToSupabase(post) {
             try {
+                // Insert the post with an empty images array — images are written in batches after
                 const postData = {
                     title: post.title,
                     description: post.description,
                     location: post.location,
                     location_data: post.locationData,
-                    images: post.images,
+                    images: [],
                     hashtags: post.hashtags,
                     date_created: post.dateCreated
                 };
@@ -2729,6 +2763,11 @@
 
                 if (error) throw error;
 
+                // Now write images in batches
+                if (post.images && post.images.length > 0) {
+                    await saveImagesBatched(data[0].id, post.images);
+                }
+
                 return data[0];
             } catch (error) {
                 console.error('Error saving post:', error);
@@ -2739,12 +2778,12 @@
 
         async function updatePostInSupabase(id, post) {
             try {
+                // Update metadata only — images are written separately in batches
                 const postData = {
                     title: post.title,
                     description: post.description,
                     location: post.location,
                     location_data: post.locationData,
-                    images: post.images,
                     hashtags: post.hashtags
                 };
 
@@ -2755,6 +2794,9 @@
                     .select();
 
                 if (error) throw error;
+
+                // Replace all images via batched RPC (handles empty array = clear)
+                await saveImagesBatched(id, post.images || []);
 
                 return data[0];
             } catch (error) {
