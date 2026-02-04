@@ -241,6 +241,25 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        .viewer-action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .viewer-action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         .viewer-info {
             color: white;
             text-align: center;
@@ -1866,7 +1885,14 @@
                 <div class="viewer-title" id="viewerTitle"></div>
                 <div class="viewer-counter" id="viewerCounter"></div>
             </div>
-            <div></div> <!-- Spacer for flex layout -->
+            <div style="display:flex;gap:8px;">
+                <button class="viewer-action-btn" onclick="shareCurrentViewerImage()" title="שתף תמונה">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                <button class="viewer-action-btn" onclick="downloadCurrentViewerImage()" title="הורד תמונה">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
         </div>
         <div class="viewer-container" id="viewerContainer">
             <button class="viewer-nav viewer-prev" id="viewerPrev" onclick="navigateViewer(-1)">
@@ -3725,14 +3751,25 @@
                 // Extract image URL using helper function
                 const imageUrl = getImageSrc(imageData);
 
-                // If it's a base64 image
+                // If it's a base64 image — convert to Blob first;
+                // setting link.href to a long data: URL silently fails in most browsers.
                 if (imageUrl.startsWith('data:')) {
+                    const commaIdx  = imageUrl.indexOf(',');
+                    const mimeMatch = imageUrl.substring(0, commaIdx).match(/:(.*?);/);
+                    const mime      = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+                    const binary    = atob(imageUrl.substring(commaIdx + 1));
+                    const bytes     = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                    const blobUrl   = URL.createObjectURL(new Blob([bytes], { type: mime }));
+
                     const link = document.createElement('a');
-                    link.href = imageUrl;
+                    link.href = blobUrl;
                     link.download = filename;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
+
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
                 } else {
                     // If it's a URL, fetch and download
                     const response = await fetch(imageUrl);
@@ -3893,6 +3930,42 @@
             document.body.style.overflow = ''; // Restore scrolling
             resetZoom();
             removeZoomHandlers();
+        }
+
+        // Share the currently displayed image via the Web Share API (mobile)
+        // or open it in a new tab as a fallback (desktop).
+        async function shareCurrentViewerImage() {
+            const imgSrc = getImageSrc(currentViewerImages[currentViewerIndex]);
+            if (!imgSrc) return;
+
+            const filename = `${currentViewerTitle || 'תמונה'}_${currentViewerIndex + 1}.jpg`;
+
+            try {
+                if (navigator.share) {
+                    const res  = await fetch(imgSrc);
+                    const blob = await res.blob();
+                    const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({ files: [file], title: currentViewerTitle || 'תמונה' });
+                        return;
+                    }
+                }
+                // Fallback: open in new tab so the user can save / screenshot
+                window.open(imgSrc, '_blank');
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Share failed:', error);
+                }
+            }
+        }
+
+        // Download the currently displayed image as a file
+        function downloadCurrentViewerImage() {
+            const imageData = currentViewerImages[currentViewerIndex];
+            if (!imageData) return;
+            const filename = `${currentViewerTitle || 'תמונה'}_${currentViewerIndex + 1}.jpg`;
+            downloadImage(imageData, filename);
         }
 
         function navigateViewer(direction) {
