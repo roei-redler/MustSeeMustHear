@@ -2826,13 +2826,14 @@
 
         async function updatePostInSupabase(id, post) {
             try {
-                // Update metadata only — images are written separately in batches
+                // Update all metadata including date_created — images written separately
                 const postData = {
                     title: post.title,
                     description: post.description,
                     location: post.location,
                     location_data: post.locationData,
-                    hashtags: post.hashtags
+                    hashtags: post.hashtags,
+                    date_created: post.dateCreated
                 };
 
                 const { data, error } = await supabase
@@ -2843,8 +2844,13 @@
 
                 if (error) throw error;
 
-                // Replace all images via batched RPC (handles empty array = clear)
-                await saveImagesBatched(id, post.images || []);
+                // Replace all images via batched RPC — isolated so a failure here
+                // does not roll back the metadata that was already saved
+                try {
+                    await saveImagesBatched(id, post.images || []);
+                } catch (imgError) {
+                    console.error('Image batch save failed (metadata was saved):', imgError);
+                }
 
                 return data[0];
             } catch (error) {
@@ -3445,8 +3451,8 @@
             modal.style.display = 'block';
         }
 
-        function loadPostForEdit(post) {
-            document.getElementById('postTitle').value = post.title;
+        async function loadPostForEdit(post) {
+            document.getElementById('postTitle').value    = post.title;
             document.getElementById('postDescription').value = post.description;
             document.getElementById('postLocation').value = post.location || '';
 
@@ -3454,12 +3460,39 @@
             const postDate = new Date(post.dateCreated);
             document.getElementById('postDate').value = postDate.toISOString().split('T')[0];
 
-            selectedLocation = post.locationData || null;
-            selectedImages = post.images ? [...post.images] : [];
-            selectedHashtags = [...post.hashtags];
+            selectedLocation  = post.locationData || null;
+            selectedHashtags  = [...post.hashtags];
+            // Seed with whatever is already in memory (first batch — typically 20)
+            selectedImages    = post.images ? [...post.images] : [];
             updateImagePreview();
             updateHashtagsDisplay();
             updateLocationDisplay(post.location);
+
+            // If the post has more images in the DB than what is currently loaded,
+            // fetch the rest so the editor shows everything.
+            const meta  = postImagesMeta[post.id];
+            const total = meta ? meta.total : selectedImages.length;
+
+            if (selectedImages.length < total) {
+                // Append a spinner below the thumbnails that are already visible
+                const preview = document.getElementById('imagePreview');
+                preview.insertAdjacentHTML('beforeend',
+                    '<div id="edit-img-loader" style="width:100%;text-align:center;padding:16px;color:#ff6b9d;">' +
+                    '<i class="fas fa-spinner fa-spin"></i> טוগগן תמונות נוספות (' + selectedImages.length + ' / ' + total + ')…</div>');
+
+                // Fetch every remaining batch
+                let offset = post.images ? post.images.length : 0;
+                while (offset < total) {
+                    await fetchPostImagesBatch(currentEditIndex, offset);
+                    const newCount = posts[currentEditIndex].images.length;
+                    if (newCount <= offset) break;   // nothing new — stop
+                    offset = newCount;
+                }
+
+                // Refresh the editor list from the now-complete array
+                selectedImages = [...posts[currentEditIndex].images];
+                updateImagePreview();   // replaces innerHTML → spinner disappears
+            }
         }
 
         function resetForm() {
