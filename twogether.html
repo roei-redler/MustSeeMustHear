@@ -353,6 +353,7 @@
             align-items: center;
             justify-content: center;
             backdrop-filter: blur(10px);
+            z-index: 3001;
         }
 
         .viewer-nav:hover {
@@ -2027,6 +2028,9 @@
         let currentViewerIndex = 0;
         let currentViewerImages = [];
         let currentViewerTitle = '';
+        let currentViewerPostIndex = null;
+        let postImagesMeta = {};          // { [postId]: { total, loadedUpTo } }
+        const IMAGE_BATCH_SIZE = 20;
         let mapPickerInstance = null;
         let mapPickerMarker = null;
         let pickedLocation = null;
@@ -2041,28 +2045,39 @@
         let initialDistance = 0;
         let initialZoom = 1;
 
-        // Helper function to extract image source from either string or object format
+        // Helper function to extract image source from either string or object format.
+        // Handles: plain data-URL strings, JSON-encoded objects, and arbitrarily nested {data:…} wrappers.
         function getImageSrc(img) {
-            if (!img) {
-                return '';
-            }
+            if (!img) return '';
 
+            // If it's a string that is NOT already a data-URL, try to parse it as JSON
+            // (images stored via PostgREST into TEXT[] arrive as serialised JSON strings)
             if (typeof img === 'string') {
-                return img;
+                if (img.startsWith('data:')) return img;          // fast path – already a usable src
+                if (img.charAt(0) === '{' || img.charAt(0) === '"') {
+                    try { img = JSON.parse(img); } catch (e) { return img; }
+                    if (typeof img === 'string') return img;      // was a quoted string, use directly
+                } else {
+                    return img;                                   // plain URL or other string
+                }
             }
 
-            // Deep unwrap nested objects (handles corrupted data)
+            // Deep unwrap nested {data:…} objects (handles corrupted / multiply-wrapped data)
             let unwrapped = img;
-            let maxDepth = 20;
+            let maxDepth  = 20;
             while (maxDepth-- > 0 && unwrapped && typeof unwrapped === 'object' && unwrapped.data) {
                 unwrapped = unwrapped.data;
+                // Each .data level might itself be a JSON string – parse it too
+                if (typeof unwrapped === 'string' && !unwrapped.startsWith('data:')) {
+                    if (unwrapped.charAt(0) === '{' || unwrapped.charAt(0) === '"') {
+                        try { unwrapped = JSON.parse(unwrapped); } catch (e) { break; }
+                    } else {
+                        break;
+                    }
+                }
             }
 
-            // Return the final unwrapped value
-            if (typeof unwrapped === 'string') {
-                return unwrapped;
-            }
-
+            if (typeof unwrapped === 'string') return unwrapped;
             return '';
         }
 
@@ -2405,8 +2420,7 @@
                         dateCreated: post.date_created
                     }));
 
-                    // Lazy load ALL images after posts are displayed
-                    lazyLoadPostImages();
+                    // Images are loaded on-demand after renderPosts via setupImageLazyLoading()
                 }
             } catch (error) {
                 console.error('Error loading posts:', error);
@@ -2491,44 +2505,83 @@
             return migratedImages;
         }
 
-        // Lazy load images for all posts - one at a time to prevent timeout
-        async function lazyLoadPostImages() {
-            // Load images one post at a time to avoid timeout
-            for (let i = 0; i < posts.length; i++) {
-                try {
-                    const post = posts[i];
-
-                    // Fetch images for this specific post only
-                    const { data, error } = await supabase
-                        .from('posts')
-                        .select('id, images')
-                        .eq('id', post.id)
-                        .single();
-
-                    if (error) {
-                        posts[i].images = [];
-                        updatePostImages(i);
-                        continue;
+        // IntersectionObserver: only start loading images for posts that enter the viewport
+        function setupImageLazyLoading() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const postIndex = parseInt(entry.target.getAttribute('data-post-index'));
+                    if (isNaN(postIndex)) return;
+                    const post = posts[postIndex];
+                    if (post && post.images === null) {
+                        post.images = [];  // mark as "loading started"
+                        fetchPostImagesBatch(postIndex, 0);
                     }
+                });
+            }, { rootMargin: '300px' });
 
-                    if (data && data.images) {
-                        // Migrate images if needed
-                        const migratedImages = await migrateImageFormat(data.images, data.id);
-                        posts[i].images = migratedImages;
-                        // Re-render this specific post after images are loaded
-                        updatePostImages(i);
-                    } else {
-                        posts[i].images = [];
-                        updatePostImages(i);
-                    }
+            document.querySelectorAll('.post-card[data-post-index]').forEach(card => {
+                observer.observe(card);
+            });
+            return observer;
+        }
 
-                    // Small delay between requests to avoid overwhelming the server
-                    await new Promise(resolve => setTimeout(resolve, 50));
+        // Fetch one page of images via the RPC function, append to posts[postIndex].images
+        async function fetchPostImagesBatch(postIndex, offset) {
+            const post = posts[postIndex];
+            if (!post || !post.id) return;
 
-                } catch (error) {
-                    posts[i].images = [];
-                    updatePostImages(i);
+            // Skip if this range was already loaded
+            const meta = postImagesMeta[post.id];
+            if (meta && offset < meta.loadedUpTo) return;
+
+            try {
+                const { data, error } = await supabase.rpc('get_post_images', {
+                    p_post_id: post.id,
+                    p_offset: offset,
+                    p_limit: IMAGE_BATCH_SIZE
+                });
+
+                if (error) {
+                    console.error('Error fetching images for post', post.id, error);
+                    if (!posts[postIndex].images) posts[postIndex].images = [];
+                    if (offset === 0) updatePostImages(postIndex);
+                    return;
                 }
+
+                const total  = data.total  || 0;
+                const images = data.images || [];
+
+                if (!posts[postIndex].images) posts[postIndex].images = [];
+                posts[postIndex].images.push(...images);
+
+                postImagesMeta[post.id] = {
+                    total:      total,
+                    loadedUpTo: offset + images.length
+                };
+
+                if (offset === 0) {
+                    // First batch — full carousel render
+                    updatePostImages(postIndex);
+                } else {
+                    // Subsequent batch — append img elements directly to existing carousel
+                    const carousel = document.getElementById(`carousel-${postIndex}`);
+                    if (carousel) {
+                        images.forEach((img, i) => {
+                            const imgEl = document.createElement('img');
+                            imgEl.src   = getImageSrc(img);
+                            imgEl.alt   = 'תמונה';
+                            imgEl.style.cursor = 'pointer';
+                            imgEl.onclick = () => openImageViewer(postIndex, offset + i);
+                            carousel.appendChild(imgEl);
+                        });
+                    }
+                    updateIndicators(postIndex);
+                }
+            } catch (error) {
+                console.error('Error fetching images batch for post', post.id, error);
+                if (!posts[postIndex].images) posts[postIndex].images = [];
+                if (offset === 0) updatePostImages(postIndex);
             }
         }
 
@@ -2556,23 +2609,31 @@
                 if (post.images && post.images.length > 0) {
                     // Update carousel container with real images
                     if (container) {
-                        // Replace the entire carousel container with the real images
+                        const meta       = postImagesMeta[post.id];
+                        const totalCount = meta ? meta.total : post.images.length;
+                        const useCounter = totalCount > 10;
+                        const slide      = currentSlides[postIndex] || 0;
+
                         container.innerHTML = `
-                            <div class="carousel" id="carousel-${postIndex}">
+                            <div class="carousel" id="carousel-${postIndex}" style="transform: translateX(${slide * 100}%);">
                                 ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
                             </div>
-                            ${post.images.length > 1 ? `
+                            ${totalCount > 1 ? `
                                 <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1)">
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
                                 <button class="carousel-nav carousel-next" onclick="changeSlide(${postIndex}, 1)">
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
-                                <div class="carousel-indicators">
-                                    ${post.images.map((_, i) => `
-                                        <div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${postIndex}, ${i})"></div>
-                                    `).join('')}
-                                </div>
+                                ${useCounter ? `
+                                    <div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;">${slide + 1} / ${totalCount}</div>
+                                ` : `
+                                    <div class="carousel-indicators">
+                                        ${post.images.map((_, i) => `
+                                            <div class="indicator ${i === slide ? 'active' : ''}" onclick="goToSlide(${postIndex}, ${i})"></div>
+                                        `).join('')}
+                                    </div>
+                                `}
                             ` : ''}
                         `;
                     }
@@ -2611,24 +2672,31 @@
                     const container = sidebarPost.querySelector('.carousel-container');
 
                     if (post.images && post.images.length > 0) {
-                        // Replace the entire carousel container with the real images
                         if (container) {
+                            const meta       = postImagesMeta[post.id];
+                            const totalCount = meta ? meta.total : post.images.length;
+                            const useCounter = totalCount > 10;
+
                             container.innerHTML = `
                                 <div class="carousel" id="sidebar-carousel-${postIndex}">
-                                    ${post.images.map((img, imgIndex) => `<img src="${img}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
+                                    ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
                                 </div>
-                                ${post.images.length > 1 ? `
+                                ${totalCount > 1 ? `
                                     <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
                                         <i class="fas fa-chevron-right"></i>
                                     </button>
                                     <button class="carousel-nav carousel-next" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, 1)" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%);">
                                         <i class="fas fa-chevron-left"></i>
                                     </button>
-                                    <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
-                                        ${post.images.map((_, i) => `
-                                            <div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${postIndex}, ${i})"></div>
-                                        `).join('')}
-                                    </div>
+                                    ${useCounter ? `
+                                        <div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:13px;">1 / ${totalCount}</div>
+                                    ` : `
+                                        <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
+                                            ${post.images.map((_, i) => `
+                                                <div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${postIndex}, ${i})"></div>
+                                            `).join('')}
+                                        </div>
+                                    `}
                                 ` : ''}
                             `;
                         }
@@ -2940,19 +3008,19 @@
                             <div class="carousel" id="sidebar-carousel-${index}">
                                 ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${index}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
                             </div>
-                            ${post.images.length > 1 ? `
+                            ${(() => { const m = postImagesMeta[post.id]; const t = m ? m.total : post.images.length; return t > 1 ? `
                                 <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${index}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
                                 <button class="carousel-nav carousel-next" onclick="event.stopPropagation(); changeSidebarSlide(${index}, 1)" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%);">
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
-                                <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
-                                    ${post.images.map((_, i) => `
-                                        <div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${index}, ${i})"></div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
+                                ${t > 10 ? `<div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:13px;">1 / ${t}</div>` : `
+                                    <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
+                                        ${post.images.map((_, i) => `<div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${index}, ${i})"></div>`).join('')}
+                                    </div>
+                                `}
+                            ` : ''; })()}
                         </div>
                     ` : ''}
 
@@ -3392,19 +3460,19 @@
                             <div class="carousel" id="carousel-${index}">
                                 ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${index}, ${imgIndex})" style="cursor: pointer;">`).join('')}
                             </div>
-                            ${post.images.length > 1 ? `
+                            ${(() => { const m = postImagesMeta[post.id]; const t = m ? m.total : post.images.length; return t > 1 ? `
                                 <button class="carousel-nav carousel-prev" onclick="changeSlide(${index}, -1)">
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
                                 <button class="carousel-nav carousel-next" onclick="changeSlide(${index}, 1)">
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
-                                <div class="carousel-indicators">
-                                    ${post.images.map((_, i) => `
-                                        <div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${index}, ${i})"></div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
+                                ${t > 10 ? `<div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;">1 / ${t}</div>` : `
+                                    <div class="carousel-indicators">
+                                        ${post.images.map((_, i) => `<div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${index}, ${i})"></div>`).join('')}
+                                    </div>
+                                `}
+                            ` : ''; })()}
                         </div>
                     ` : ''}
 
@@ -3439,30 +3507,33 @@
             }
 
             try {
-                // Fetch the complete post data including images
+                // Fetch post metadata without images (images can be huge)
                 const { data, error } = await supabase
                     .from('posts')
-                    .select('*')
+                    .select('id, title, description, location, location_data, hashtags, date_created')
                     .eq('id', post.id)
                     .single();
 
                 if (error) throw error;
 
                 if (data) {
-                    // Update the post in the posts array
+                    // Update the post metadata; reset images so they re-fetch via RPC
                     posts[postIndex] = {
                         id: data.id,
                         title: data.title,
                         description: data.description,
                         location: data.location,
                         locationData: data.location_data,
-                        images: data.images || [],
+                        images: null,  // will be re-fetched in batches below
                         hashtags: data.hashtags || [],
                         date: new Date(data.date_created).toLocaleDateString('he-IL'),
                         dateCreated: data.date_created
                     };
+                    // Clear cached meta so fetchPostImagesBatch starts from 0
+                    delete postImagesMeta[data.id];
+                    currentSlides[postIndex] = 0;
 
-                    // Re-render just this post
+                    // Re-render the post card (shows placeholder while images load)
                     const postCard = document.querySelector(`[data-post-index="${postIndex}"]`);
                     if (postCard) {
                         const newHTML = createPostHTML(posts[postIndex], postIndex);
@@ -3470,6 +3541,10 @@
                         tempDiv.innerHTML = newHTML;
                         postCard.replaceWith(tempDiv.firstElementChild);
                     }
+
+                    // Re-fetch images in batches
+                    posts[postIndex].images = [];
+                    fetchPostImagesBatch(postIndex, 0);
                 }
             } catch (error) {
                 console.error('Error refreshing post:', error);
@@ -3489,19 +3564,28 @@
                 return;
             }
 
+            // Make sure all images are loaded before downloading
+            const meta  = postImagesMeta[post.id];
+            const total = meta ? meta.total : post.images.length;
+
+            if (post.images.length < total) {
+                showLoader('טוען תמונות להורדה...', `💝 טוең ${total} תמונות`);
+                let offset = post.images.length;
+                while (offset < total) {
+                    await fetchPostImagesBatch(postIndex, offset);
+                    const newLoaded = posts[postIndex].images.length;
+                    if (newLoaded <= offset) break; // nothing new fetched — stop
+                    offset = newLoaded;
+                }
+                await hideLoader();
+            }
+
             showLoader('מוריד תמונות...', `💝 מוריד ${post.images.length} תמונות`);
 
             try {
-                // If there's only one image, download it directly
-                if (post.images.length === 1) {
-                    await downloadImage(post.images[0], `${post.title}_1.jpg`);
-                } else {
-                    // Download multiple images
-                    for (let i = 0; i < post.images.length; i++) {
-                        await downloadImage(post.images[i], `${post.title}_${i + 1}.jpg`);
-                        // Small delay between downloads
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                    }
+                for (let i = 0; i < post.images.length; i++) {
+                    await downloadImage(post.images[i], `${post.title}_${i + 1}.jpg`);
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
 
                 await hideLoader();
@@ -3593,37 +3677,74 @@
         // Carousel Functions
         function changeSlide(postIndex, direction) {
             if (!currentSlides[postIndex]) currentSlides[postIndex] = 0;
-            
-            const carousel = document.getElementById(`carousel-${postIndex}`);
-            const images = carousel.querySelectorAll('img');
-            const totalImages = images.length;
-            
-            currentSlides[postIndex] += direction;
-            
-            if (currentSlides[postIndex] >= totalImages) {
-                currentSlides[postIndex] = 0;
-            } else if (currentSlides[postIndex] < 0) {
-                currentSlides[postIndex] = totalImages - 1;
+
+            const post        = posts[postIndex];
+            const meta        = post && postImagesMeta[post.id];
+            const totalImages = meta ? meta.total : (post && post.images ? post.images.length : 0);
+            const loadedCount = post && post.images ? post.images.length : 0;
+
+            let newSlide = currentSlides[postIndex] + direction;
+            if (newSlide >= totalImages) newSlide = 0;
+            else if (newSlide < 0)       newSlide = totalImages - 1;
+
+            // If the target slide hasn't been fetched yet, load the next batch first
+            if (newSlide >= loadedCount && post) {
+                fetchPostImagesBatch(postIndex, loadedCount).then(() => {
+                    currentSlides[postIndex] = newSlide;
+                    const carousel = document.getElementById(`carousel-${postIndex}`);
+                    if (carousel) carousel.style.transform = `translateX(${newSlide * 100}%)`;
+                    updateIndicators(postIndex);
+                });
+                return;
             }
-            
-            carousel.style.transform = `translateX(${currentSlides[postIndex] * 100}%)`;
+
+            currentSlides[postIndex] = newSlide;
+            const carousel = document.getElementById(`carousel-${postIndex}`);
+            if (carousel) carousel.style.transform = `translateX(${newSlide * 100}%)`;
             updateIndicators(postIndex);
         }
 
         function goToSlide(postIndex, slideIndex) {
+            const post        = posts[postIndex];
+            const loadedCount = post && post.images ? post.images.length : 0;
+
+            if (slideIndex >= loadedCount && post) {
+                fetchPostImagesBatch(postIndex, loadedCount).then(() => {
+                    currentSlides[postIndex] = slideIndex;
+                    const carousel = document.getElementById(`carousel-${postIndex}`);
+                    if (carousel) carousel.style.transform = `translateX(${slideIndex * 100}%)`;
+                    updateIndicators(postIndex);
+                });
+                return;
+            }
+
             currentSlides[postIndex] = slideIndex;
             const carousel = document.getElementById(`carousel-${postIndex}`);
-            carousel.style.transform = `translateX(${slideIndex * 100}%)`;
+            if (carousel) carousel.style.transform = `translateX(${slideIndex * 100}%)`;
             updateIndicators(postIndex);
         }
 
         function updateIndicators(postIndex) {
-            const carouselContainer = document.getElementById(`carousel-${postIndex}`).parentElement;
-            const indicators = carouselContainer.querySelectorAll('.indicator');
-            if (indicators) {
-                indicators.forEach((indicator, i) => {
-                    indicator.classList.toggle('active', i === currentSlides[postIndex]);
-                });
+            const carouselEl = document.getElementById(`carousel-${postIndex}`);
+            if (!carouselEl) return;
+            const container  = carouselEl.parentElement;
+            const post       = posts[postIndex];
+            const meta       = post && postImagesMeta[post.id];
+            const total      = meta ? meta.total : (post && post.images ? post.images.length : 0);
+            const slide      = currentSlides[postIndex] || 0;
+
+            if (total > 10) {
+                // Counter mode
+                const counter = container.querySelector('.slide-counter');
+                if (counter) counter.textContent = `${slide + 1} / ${total}`;
+            } else {
+                // Dots mode
+                const indicators = container.querySelectorAll('.indicator');
+                if (indicators) {
+                    indicators.forEach((indicator, i) => {
+                        indicator.classList.toggle('active', i === slide);
+                    });
+                }
             }
         }
 
@@ -3632,9 +3753,10 @@
             const post = posts[postIndex];
             if (!post || !post.images || post.images.length === 0) return;
 
-            currentViewerImages = post.images;
-            currentViewerIndex = imageIndex;
-            currentViewerTitle = post.title;
+            currentViewerImages  = post.images;
+            currentViewerIndex   = imageIndex;
+            currentViewerTitle   = post.title;
+            currentViewerPostIndex = postIndex;
 
             resetZoom();
             updateViewer();
@@ -3651,14 +3773,25 @@
         }
 
         function navigateViewer(direction) {
-            currentViewerIndex += direction;
+            const post  = currentViewerPostIndex !== null ? posts[currentViewerPostIndex] : null;
+            const meta  = post && postImagesMeta[post.id];
+            const total = meta ? meta.total : currentViewerImages.length;
 
-            if (currentViewerIndex >= currentViewerImages.length) {
-                currentViewerIndex = 0;
-            } else if (currentViewerIndex < 0) {
-                currentViewerIndex = currentViewerImages.length - 1;
+            let newIndex = currentViewerIndex + direction;
+            if (newIndex >= total)  newIndex = 0;
+            else if (newIndex < 0) newIndex = total - 1;
+
+            // If target image isn't loaded yet, fetch the next batch then navigate
+            if (newIndex >= currentViewerImages.length && post) {
+                fetchPostImagesBatch(currentViewerPostIndex, post.images.length).then(() => {
+                    currentViewerImages = post.images;
+                    currentViewerIndex  = newIndex;
+                    updateViewer();
+                });
+                return;
             }
 
+            currentViewerIndex = newIndex;
             updateViewer();
         }
 
@@ -3668,12 +3801,16 @@
         }
 
         function updateViewer() {
-            const image = document.getElementById('viewerImage');
-            const title = document.getElementById('viewerTitle');
-            const counter = document.getElementById('viewerCounter');
+            const image      = document.getElementById('viewerImage');
+            const title      = document.getElementById('viewerTitle');
+            const counter    = document.getElementById('viewerCounter');
             const thumbnails = document.getElementById('viewerThumbnails');
-            const prevBtn = document.getElementById('viewerPrev');
-            const nextBtn = document.getElementById('viewerNext');
+            const prevBtn    = document.getElementById('viewerPrev');
+            const nextBtn    = document.getElementById('viewerNext');
+
+            const post  = currentViewerPostIndex !== null ? posts[currentViewerPostIndex] : null;
+            const meta  = post && postImagesMeta[post.id];
+            const total = meta ? meta.total : currentViewerImages.length;
 
             // Extract image source using helper function
             const currentImage = currentViewerImages[currentViewerIndex];
@@ -3685,22 +3822,27 @@
             // Reset zoom when changing images
             resetZoom();
 
-            // Update title and counter
-            title.textContent = currentViewerTitle;
-            counter.textContent = `${currentViewerIndex + 1} מתוך ${currentViewerImages.length}`;
+            // Update title and counter (show real total, not just loaded count)
+            title.textContent   = currentViewerTitle;
+            counter.textContent = `${currentViewerIndex + 1} מתוך ${total}`;
 
             // Update navigation buttons
-            prevBtn.disabled = currentViewerImages.length <= 1;
-            nextBtn.disabled = currentViewerImages.length <= 1;
+            prevBtn.disabled = total <= 1;
+            nextBtn.disabled = total <= 1;
 
-            // Update thumbnails
+            // Thumbnails: only render a window of loaded images around the current index
             if (currentViewerImages.length > 1) {
-                thumbnails.innerHTML = currentViewerImages.map((img, index) => `
-                    <img src="${getImageSrc(img)}"
-                         class="viewer-thumbnail ${index === currentViewerIndex ? 'active' : ''}"
-                         onclick="goToViewerImage(${index})"
-                         alt="תמונה ${index + 1}">
-                `).join('');
+                const windowSize = 30;
+                const start = Math.max(0, currentViewerIndex - Math.floor(windowSize / 2));
+                const end   = Math.min(currentViewerImages.length, start + windowSize);
+
+                thumbnails.innerHTML = currentViewerImages.slice(start, end).map((img, i) => {
+                    const realIndex = start + i;
+                    return `<img src="${getImageSrc(img)}"
+                         class="viewer-thumbnail ${realIndex === currentViewerIndex ? 'active' : ''}"
+                         onclick="goToViewerImage(${realIndex})"
+                         alt="תמונה ${realIndex + 1}">`;
+                }).join('');
                 thumbnails.style.display = 'flex';
             } else {
                 thumbnails.style.display = 'none';
@@ -4017,6 +4159,7 @@
             posts = [];
             await loadPostsFromSupabase();
             renderPosts();
+            setupImageLazyLoading();
 
             if (currentTab === 'calendar') {
                 renderCalendar();
