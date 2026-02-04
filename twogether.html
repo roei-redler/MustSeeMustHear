@@ -43,7 +43,12 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💕</text></svg>">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Phosphor Icons Light -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.0/src/light/style.css">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <!-- GSAP -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,15 +62,33 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #ff6b9d;
+            --primary-glow: rgba(255,107,157,0.4);
+            --secondary: #a78bfa;
+            --secondary-glow: rgba(167,139,250,0.35);
+            --card-bg: rgba(255,255,255,0.88);
+            --card-border: rgba(255,107,157,0.1);
+            --card-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            --card-shadow-hover: 0 10px 36px rgba(255,107,157,0.18);
+            --text-primary: #1e1b4b;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --smooth: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         body {
             font-family: 'Heebo', sans-serif;
-            background-color: #fafafa;
+            background: linear-gradient(145deg, #fff5f7 0%, #fafafa 45%, #f3f0ff 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
             direction: rtl;
             text-align: right;
         }
 
         .header {
-            background: linear-gradient(135deg, #ff6b9d 0%, #ffa6c1 50%, #ff6b9d 100%);
+            background: linear-gradient(135deg, #ff6b9d 0%, #c084fc 50%, #ff6b9d 100%);
             background-size: 200% 100%;
             animation: gradientShift 8s ease infinite;
             border-bottom: 3px solid rgba(255, 255, 255, 0.3);
@@ -74,6 +97,7 @@
             z-index: 1000;
             padding: 18px 0;
             box-shadow: 0 4px 20px rgba(255, 107, 157, 0.3);
+            overflow: hidden;
         }
 
         @keyframes gradientShift {
@@ -151,25 +175,26 @@
             right: 20px;
             width: 70px;
             height: 70px;
-            background: linear-gradient(135deg, #ff6b9d 0%, #ffa6c1 100%);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
-            border: 3px solid rgba(255, 255, 255, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.6);
             border-radius: 50%;
             cursor: pointer;
             font-size: 28px;
-            box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
+            box-shadow: 0 6px 20px var(--primary-glow);
             transition: all 0.3s ease;
             z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: center;
             animation: floatPulse 3s ease-in-out infinite;
+            overflow: hidden;
         }
 
         @keyframes floatPulse {
             0%, 100% {
                 transform: translateY(0) scale(1);
-                box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
+                box-shadow: 0 6px 20px var(--primary-glow);
             }
             50% {
                 transform: translateY(-5px) scale(1.05);
@@ -178,9 +203,8 @@
         }
 
         .floating-add-btn:hover {
-            background: linear-gradient(135deg, #ff5a8f 0%, #ff95b3 100%);
             transform: scale(1.15) rotate(90deg);
-            box-shadow: 0 8px 30px rgba(255, 107, 157, 0.7);
+            box-shadow: 0 8px 32px rgba(255, 107, 157, 0.7);
             animation: none;
         }
 
@@ -444,38 +468,44 @@
         /* Tab Navigation */
         .tab-navigation {
             display: flex;
-            background: white;
-            border-radius: 12px;
-            padding: 4px;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 50px;
+            padding: 5px;
             margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+            border: 1px solid rgba(0,0,0,0.05);
         }
 
         .tab-btn {
             flex: 1;
-            padding: 15px 20px;
+            padding: 13px 20px;
             background: none;
             border: none;
-            border-radius: 8px;
+            border-radius: 50px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
-            color: #8e8e8e;
-            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            transition: all 0.35s var(--spring);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            position: relative;
+            overflow: hidden;
         }
 
         .tab-btn.active {
-            background: #0095f6;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
+            box-shadow: 0 4px 18px var(--primary-glow);
         }
 
         .tab-btn:hover:not(.active) {
-            background: #f0f0f0;
-            color: #262626;
+            background: rgba(255,107,157,0.08);
+            color: var(--primary);
         }
 
         .tab-content {
@@ -499,22 +529,25 @@
         }
 
         .post-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--card-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
             overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.4s var(--spring), box-shadow 0.3s var(--smooth);
             position: relative;
         }
 
         .post-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: var(--card-shadow-hover);
         }
 
         .post-header {
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 16px 18px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -523,31 +556,44 @@
         .post-title {
             font-size: 18px;
             font-weight: 600;
-            color: #262626;
+            color: var(--text-primary);
             margin: 0;
         }
 
         .post-date {
-            color: #8e8e8e;
-            font-size: 12px;
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 2px;
         }
 
         .post-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .action-btn {
-            background: none;
-            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.07);
             cursor: pointer;
-            color: #8e8e8e;
+            color: var(--text-secondary);
             font-size: 16px;
-            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s var(--spring);
         }
 
         .action-btn:hover {
-            color: #262626;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-color: transparent;
+            transform: scale(1.15);
+            box-shadow: 0 4px 14px var(--primary-glow);
         }
 
         .carousel-container {
@@ -574,9 +620,11 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(0,0,0,0.5);
-            color: white;
-            border: none;
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.5);
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -584,11 +632,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.25s ease;
         }
 
         .carousel-nav:hover {
-            background: rgba(0,0,0,0.7);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 16px var(--primary-glow);
         }
 
         .carousel-prev {
@@ -622,18 +674,18 @@
         }
 
         .post-content {
-            padding: 15px;
+            padding: 16px 18px;
         }
 
         .post-description {
-            color: #262626;
-            line-height: 1.5;
+            color: var(--text-primary);
+            line-height: 1.6;
             margin-bottom: 10px;
             white-space: pre-wrap;
         }
 
         .description-toggle {
-            color: #0095f6;
+            color: var(--primary);
             cursor: pointer;
             font-weight: 600;
             font-size: 14px;
@@ -641,27 +693,27 @@
             background: none;
             padding: 0;
             margin-right: 5px;
-            transition: color 0.3s ease;
+            transition: color 0.25s ease;
         }
 
         .description-toggle:hover {
-            color: #0084e6;
+            color: var(--secondary);
             text-decoration: underline;
         }
 
         .post-location {
-            color: #8e8e8e;
+            color: var(--secondary);
             font-size: 14px;
             margin-bottom: 10px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             cursor: pointer;
-            transition: color 0.3s ease;
+            transition: color 0.25s ease;
         }
 
         .post-location:hover {
-            color: #0095f6;
+            color: var(--primary);
         }
 
         .post-hashtags {
@@ -671,17 +723,20 @@
         }
 
         .hashtag {
-            background: #e1f5fe;
-            color: #0288d1;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
+            background: linear-gradient(135deg, rgba(255,107,157,0.07), rgba(167,139,250,0.07));
+            border: 1px solid rgba(255,107,157,0.25);
+            color: var(--primary);
+            padding: 5px 14px;
+            border-radius: 50px;
+            font-size: 13px;
             text-decoration: none;
-            transition: background 0.3s ease;
+            transition: all 0.25s ease;
         }
 
         .hashtag:hover {
-            background: #b3e5fc;
+            background: linear-gradient(135deg, rgba(255,107,157,0.14), rgba(167,139,250,0.14));
+            border-color: var(--primary);
+            transform: scale(1.04);
         }
 
         /* Calendar Styles */
@@ -694,10 +749,13 @@
         }
 
         .calendar-container {
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--card-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
         }
 
         @media (max-width: 900px) {
@@ -714,89 +772,97 @@
         }
 
         .calendar-nav-btn {
-            background: #0095f6;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             border: none;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             cursor: pointer;
             font-size: 16px;
-            transition: background 0.3s ease;
+            transition: all 0.25s var(--spring);
+            box-shadow: 0 3px 10px var(--primary-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .calendar-nav-btn:hover {
-            background: #0084e6;
+            transform: scale(1.1);
+            box-shadow: 0 4px 16px var(--primary-glow);
         }
 
         .calendar-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #262626;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 1px;
-            background: #e0e0e0;
-            border-radius: 8px;
+            gap: 3px;
+            border-radius: 14px;
             overflow: hidden;
         }
 
         .calendar-day-header {
-            background: #f5f5f5;
+            background: rgba(255,107,157,0.06);
             padding: 10px 5px;
             text-align: center;
             font-weight: 600;
-            color: #666;
+            color: var(--primary);
             font-size: 12px;
         }
 
         .calendar-day {
-            background: white;
+            background: rgba(255,255,255,0.7);
             padding: 10px 5px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             min-height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             font-size: 14px;
+            border-radius: 10px;
+            color: var(--text-primary);
         }
 
         .calendar-day:hover {
-            background: #f0f8ff;
+            background: rgba(255,107,157,0.1);
         }
 
         .calendar-day.other-month {
-            color: #ccc;
-            background: #f9f9f9;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.3);
         }
 
         .calendar-day.has-posts {
-            background: #e3f2fd;
-            color: #1976d2;
+            background: linear-gradient(135deg, rgba(255,107,157,0.12), rgba(167,139,250,0.12));
+            color: var(--primary);
             font-weight: 600;
+            border: 1px solid rgba(255,107,157,0.25);
         }
 
         .calendar-day.has-posts::after {
             content: '';
             position: absolute;
-            bottom: 5px;
+            bottom: 4px;
             left: 50%;
             transform: translateX(-50%);
-            width: 6px;
-            height: 6px;
-            background: #1976d2;
+            width: 5px;
+            height: 5px;
+            background: var(--primary);
             border-radius: 50%;
         }
 
         .calendar-day.selected {
-            background: #0095f6;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
+            box-shadow: 0 3px 12px var(--primary-glow);
         }
 
         .filtered-posts {
@@ -804,33 +870,38 @@
         }
 
         .filtered-posts h3 {
-            color: #262626;
+            color: var(--text-primary);
             margin-bottom: 20px;
-            font-size: 20px;
+            font-size: 18px;
+            font-weight: 700;
         }
 
         /* Map Styles */
         .map-container {
             display: flex;
             gap: 20px;
-            height: 100vh;
+            height: calc(100vh - 155px);
         }
 
         #map {
             flex: 1;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 0;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
         }
 
         .map-sidebar {
             width: 450px;
-            background: white;
-            border-radius: 12px;
+            background: var(--card-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
             padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
             overflow-y: auto;
             display: none;
-            max-height: 100vh;
+            max-height: 100%;
         }
 
         .map-sidebar.active {
@@ -843,42 +914,43 @@
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
         }
 
         .sidebar-title {
             font-size: 18px;
-            font-weight: 600;
-            color: #262626;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .close-sidebar-btn {
-            background: none;
-            border: none;
-            font-size: 20px;
+            background: rgba(255,255,255,0.85);
+            border: 1px solid rgba(0,0,0,0.07);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
             cursor: pointer;
-            color: #8e8e8e;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .close-sidebar-btn:hover {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-color: transparent;
         }
 
         .sidebar-posts {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 14px;
         }
 
-        .sidebar-post-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid #f0f0f0;
-        }
-
-        .sidebar-post-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
-        }
+        /* Sidebar posts now use .post-card — identical to feed */
 
         /* Modal Styles */
         .modal {
@@ -912,7 +984,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 25px 30px;
-            background: linear-gradient(135deg, #ff6b9d 0%, #ffa6c1 100%);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             border-bottom: 3px solid rgba(255, 255, 255, 0.3);
             position: sticky;
             top: 0;
@@ -1061,18 +1133,21 @@
             left: 10px;
             top: 50%;
             transform: translateY(-50%);
-            background: #0095f6;
+            background: linear-gradient(135deg, var(--primary), #ff8fb3);
             color: white;
             border: none;
-            border-radius: 6px;
-            padding: 8px 12px;
+            border-radius: 20px;
+            padding: 8px 14px;
             cursor: pointer;
             font-size: 12px;
-            transition: background 0.3s ease;
+            font-weight: 600;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 8px var(--primary-glow);
         }
 
         .location-search-btn:hover {
-            background: #0084e6;
+            transform: translateY(-50%) translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-glow);
         }
 
         .location-suggestions {
@@ -1080,25 +1155,29 @@
             top: 100%;
             left: 0;
             right: 0;
-            background: white;
-            border: 1px solid #dbdbdb;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.08);
             border-top: none;
-            border-radius: 0 0 8px 8px;
+            border-radius: 0 0 14px 14px;
             max-height: 200px;
             overflow-y: auto;
             z-index: 1000;
             display: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
         }
 
         .location-suggestion {
             padding: 12px;
             cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
-            transition: background 0.3s ease;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            transition: background 0.2s ease;
+            color: var(--text-primary);
         }
 
         .location-suggestion:hover {
-            background: #f0f8ff;
+            background: rgba(255,107,157,0.07);
         }
 
         .location-suggestion:last-child {
@@ -1176,19 +1255,17 @@
         }
 
         .submit-btn {
-            background: linear-gradient(135deg, #ff6b9d 0%, #ffa6c1 100%);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             border: none;
-            border-radius: 16px;
+            border-radius: 50px;
             padding: 16px 32px;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
             cursor: pointer;
             width: 100%;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            box-shadow: 0 4px 18px var(--primary-glow);
             position: relative;
             overflow: hidden;
         }
@@ -1196,20 +1273,20 @@
         .submit-btn::before {
             content: "💖";
             position: absolute;
-            right: 20px;
+            right: 24px;
             top: 50%;
             transform: translateY(-50%);
-            font-size: 20px;
+            font-size: 18px;
         }
 
         .submit-btn:hover {
-            background: linear-gradient(135deg, #ff5a8f 0%, #ff95b3 100%);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
+            box-shadow: 0 6px 24px var(--primary-glow);
         }
 
         .submit-btn:active {
             transform: translateY(0);
+            box-shadow: 0 2px 10px var(--primary-glow);
         }
 
         .hashtag-input {
@@ -1224,40 +1301,49 @@
         }
 
         .hashtag-suggestion {
-            background: #f0f0f0;
-            color: #262626;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
+            background: rgba(255,107,157,0.08);
+            border: 1px solid rgba(255,107,157,0.2);
+            color: var(--primary);
+            padding: 5px 12px;
+            border-radius: 50px;
+            font-size: 13px;
             cursor: pointer;
-            transition: background 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .hashtag-suggestion:hover {
-            background: #e0e0e0;
+            background: rgba(255,107,157,0.16);
+            border-color: var(--primary);
+            transform: scale(1.04);
         }
 
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: #8e8e8e;
+            padding: 80px 20px;
+            color: var(--text-muted);
         }
 
         .empty-state i {
-            font-size: 48px;
-            margin-bottom: 20px;
+            font-size: 72px;
+            margin-bottom: 24px;
             display: block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .empty-state h3 {
-            font-size: 24px;
+            font-size: 22px;
             margin-bottom: 10px;
-            color: #262626;
+            color: var(--text-primary);
+            font-weight: 700;
         }
 
         .empty-state p {
-            font-size: 16px;
-            margin-bottom: 20px;
+            font-size: 15px;
+            margin-bottom: 24px;
+            color: var(--text-secondary);
         }
 
         .loading {
@@ -1486,11 +1572,12 @@
             width: 90%;
             box-shadow: 0 20px 60px rgba(255, 107, 157, 0.3);
             border: 2px solid rgba(255, 182, 193, 0.3);
+            animation: modalSlideUp 0.45s var(--spring) both;
         }
 
         .auth-header {
             padding: 25px 30px;
-            background: linear-gradient(135deg, #ff6b9d 0%, #ffa6c1 100%);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             border-bottom: 3px solid rgba(255, 255, 255, 0.3);
             border-radius: 24px 24px 0 0;
         }
@@ -1587,6 +1674,44 @@
         .logout-btn:hover {
             background: white;
             transform: translateY(-2px);
+        }
+
+        /* Spin utility (replaces FA fa-spin) */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; display: inline-block; }
+
+        /* Modal / Auth entrance */
+        @keyframes modalSlideUp {
+            from { transform: translateY(36px) scale(0.96); opacity: 0; }
+            to   { transform: translateY(0)    scale(1);    opacity: 1; }
+        }
+
+        /* Header floating particles */
+        @keyframes particleFloat {
+            0%   { transform: translateY(0) translateX(0); opacity: 0; }
+            12%  { opacity: 0.7; }
+            88%  { opacity: 0.3; }
+            100% { transform: translateY(var(--ty,-40px)) translateX(var(--tx,30px)); opacity: 0; }
+        }
+        .header-particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            pointer-events: none;
+            animation: particleFloat var(--dur,4s) ease-in-out infinite;
+        }
+
+        /* Button ripple */
+        @keyframes rippleAnim { to { transform: translate(-50%,-50%) scale(35); opacity: 0; } }
+        .ripple {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            transform: translate(-50%,-50%) scale(0);
+            animation: rippleAnim 0.6s ease-out forwards;
+            pointer-events: none;
         }
 
         /* Hide main content when not authenticated */
@@ -1686,7 +1811,7 @@
 
             .map-container {
                 flex-direction: column;
-                height: 100vh;
+                height: calc(100vh - 130px);
             }
 
             #map {
@@ -1783,25 +1908,32 @@
                 <div class="user-menu">
                     <div class="user-info" id="userInfo"></div>
                     <button class="logout-btn" onclick="handleLogout()">
-                        <i class="fas fa-sign-out-alt"></i> התנתק
+                        <i class="ph-light ph-sign-out"></i> התנתק
                     </button>
                 </div>
             </div>
+            <!-- Floating header particles -->
+            <span class="header-particle" style="left:8%;  top:25%; width:5px; height:5px; --dur:3.8s; --tx:35px; --ty:-28px; animation-delay:0s;"></span>
+            <span class="header-particle" style="left:22%; top:65%; width:4px; height:4px; --dur:4.5s; --tx:-18px; --ty:-38px; animation-delay:0.6s;"></span>
+            <span class="header-particle" style="left:38%; top:18%; width:6px; height:6px; --dur:5s;  --tx:12px;  --ty:-34px; animation-delay:1.2s;"></span>
+            <span class="header-particle" style="right:32%; top:55%; width:4px; height:4px; --dur:3.2s; --tx:-14px; --ty:-22px; animation-delay:0.3s;"></span>
+            <span class="header-particle" style="right:16%; top:28%; width:5px; height:5px; --dur:4.8s; --tx:22px;  --ty:-36px; animation-delay:1.8s;"></span>
+            <span class="header-particle" style="right:6%;  top:72%; width:3px; height:3px; --dur:3.5s; --tx:-28px; --ty:-18px; animation-delay:0.9s;"></span>
         </header>
 
         <div class="container">
         <!-- Tab Navigation -->
         <div class="tab-navigation">
             <button class="tab-btn active" onclick="switchTab('feed')">
-                <i class="fas fa-home"></i>
+                <i class="ph-light ph-house"></i>
                 <span>פיד</span>
             </button>
             <button class="tab-btn" onclick="switchTab('calendar')">
-                <i class="fas fa-calendar"></i>
+                <i class="ph-light ph-calendar"></i>
                 <span>לוח שנה</span>
             </button>
             <button class="tab-btn" onclick="switchTab('map')">
-                <i class="fas fa-map"></i>
+                <i class="ph-light ph-map-trifold"></i>
                 <span>מפה</span>
             </button>
         </div>
@@ -1817,11 +1949,11 @@
                 <div class="calendar-container">
                     <div class="calendar-header">
                         <button class="calendar-nav-btn" onclick="navigateCalendar(-1)">
-                            <i class="fas fa-chevron-right"></i>
+                            <i class="ph-light ph-caret-right"></i>
                         </button>
                         <h2 class="calendar-title" id="calendarTitle1"></h2>
                         <button class="calendar-nav-btn" onclick="navigateCalendar(1)">
-                            <i class="fas fa-chevron-left"></i>
+                            <i class="ph-light ph-caret-left"></i>
                         </button>
                     </div>
                     <div class="calendar-grid" id="calendarGrid1"></div>
@@ -1829,11 +1961,11 @@
                 <div class="calendar-container">
                     <div class="calendar-header">
                         <button class="calendar-nav-btn" onclick="navigateCalendar(-1)">
-                            <i class="fas fa-chevron-right"></i>
+                            <i class="ph-light ph-caret-right"></i>
                         </button>
                         <h2 class="calendar-title" id="calendarTitle2"></h2>
                         <button class="calendar-nav-btn" onclick="navigateCalendar(1)">
-                            <i class="fas fa-chevron-left"></i>
+                            <i class="ph-light ph-caret-left"></i>
                         </button>
                     </div>
                     <div class="calendar-grid" id="calendarGrid2"></div>
@@ -1859,7 +1991,7 @@
 
     <!-- Floating Add Button -->
     <button class="floating-add-btn" onclick="openModal()" title="פוסט חדש">
-        <i class="fas fa-plus"></i>
+        <i class="ph-light ph-plus"></i>
     </button>
 
     <!-- Love Loader -->
@@ -1879,7 +2011,7 @@
     <div id="imageViewer" class="image-viewer">
         <div class="viewer-header">
             <button class="viewer-close" onclick="closeImageViewer()">
-                <i class="fas fa-times"></i>
+                <i class="ph-light ph-x"></i>
             </button>
             <div class="viewer-info">
                 <div class="viewer-title" id="viewerTitle"></div>
@@ -1887,32 +2019,32 @@
             </div>
             <div style="display:flex;gap:8px;">
                 <button class="viewer-action-btn" onclick="shareCurrentViewerImage()" title="שתף תמונה">
-                    <i class="fas fa-share-alt"></i>
+                    <i class="ph-light ph-export"></i>
                 </button>
                 <button class="viewer-action-btn" onclick="downloadCurrentViewerImage()" title="הורד תמונה">
-                    <i class="fas fa-download"></i>
+                    <i class="ph-light ph-download-simple"></i>
                 </button>
             </div>
         </div>
         <div class="viewer-container" id="viewerContainer">
             <button class="viewer-nav viewer-prev" id="viewerPrev" onclick="navigateViewer(-1)">
-                <i class="fas fa-chevron-right"></i>
+                <i class="ph-light ph-caret-right"></i>
             </button>
             <div class="viewer-image-wrapper" id="viewerImageWrapper">
                 <img class="viewer-image" id="viewerImage" src="" alt="">
             </div>
             <button class="viewer-nav viewer-next" id="viewerNext" onclick="navigateViewer(1)">
-                <i class="fas fa-chevron-left"></i>
+                <i class="ph-light ph-caret-left"></i>
             </button>
             <div class="zoom-controls">
                 <button class="zoom-btn" id="zoomInBtn" onclick="zoomIn()" title="הגדל">
-                    <i class="fas fa-plus"></i>
+                    <i class="ph-light ph-plus"></i>
                 </button>
                 <button class="zoom-btn" id="zoomResetBtn" onclick="resetZoom()" title="אפס תצוגה">
-                    <i class="fas fa-compress"></i>
+                    <i class="ph-light ph-arrows-in"></i>
                 </button>
                 <button class="zoom-btn" id="zoomOutBtn" onclick="zoomOut()" title="הקטן">
-                    <i class="fas fa-minus"></i>
+                    <i class="ph-light ph-minus"></i>
                 </button>
             </div>
         </div>
@@ -1943,7 +2075,7 @@
                     <label class="form-label">בחירת תאריך</label>
                     <input type="date" id="postDate" class="form-input" required>
                     <div style="margin-top: 5px; color: #8e8e8e; font-size: 12px;">
-                        <i class="fas fa-info-circle"></i> בחר את התאריך בו התרחש האירוע
+                        <i class="ph-light ph-info"></i> בחר את התאריך בו התרחש האירוע
                     </div>
                 </div>
 
@@ -1952,16 +2084,16 @@
                     <div class="location-search-container">
                         <input type="text" id="postLocation" class="form-input" placeholder="הקלד מיקום לחיפוש או בחר במפה..." style="padding-left: 180px;">
                         <button type="button" class="location-search-btn" onclick="searchLocation()">
-                            <i class="fas fa-search"></i> חפש
+                            <i class="ph-light ph-magnifying-glass"></i> חפש
                         </button>
                         <button type="button" class="location-search-btn" onclick="openMapPicker()" style="left: 90px; background: #28a745;">
-                            <i class="fas fa-map-marker-alt"></i> סמן במפה
+                            <i class="ph-light ph-map-pin"></i> סמן במפה
                         </button>
                         <div class="location-suggestions" id="locationSuggestions"></div>
                         <div class="loading" id="locationLoading">מחפש מיקומים...</div>
                     </div>
                     <div id="selectedLocationDisplay" style="margin-top: 10px; color: #0095f6; font-size: 14px; display: none;">
-                        <i class="fas fa-check-circle"></i> <span id="selectedLocationText"></span>
+                        <i class="ph-light ph-check-circle"></i> <span id="selectedLocationText"></span>
                     </div>
                 </div>
 
@@ -1969,7 +2101,7 @@
                     <label class="form-label">תמונות</label>
                     <div class="image-upload" onclick="document.getElementById('imageInput').click()">
                         <div class="upload-text">לחץ כאן או גרור תמונות</div>
-                        <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: #8e8e8e;"></i>
+                        <i class="ph-light ph-cloud-arrow-up" style="font-size: 24px; color: #8e8e8e;"></i>
                     </div>
                     <input type="file" id="imageInput" class="file-input" multiple accept="image/*">
                     <div id="imagePreview" class="image-preview"></div>
@@ -2011,7 +2143,7 @@
             </div>
 
             <div style="margin-bottom: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; color: #1976d2;">
-                <i class="fas fa-info-circle"></i> לחץ על המפה כדי לבחור מיקום מותאם אישית
+                <i class="ph-light ph-info"></i> לחץ על המפה כדי לבחור מיקום מותאם אישית
             </div>
 
             <div id="mapPicker" style="height: 500px; border-radius: 8px; margin-bottom: 15px;"></div>
@@ -2019,7 +2151,7 @@
             <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
                 <input type="text" id="customLocationName" class="form-input" placeholder="הכנס שם למיקום (אופציונלי)" style="flex: 1;">
                 <button type="button" class="submit-btn" onclick="confirmMapLocation()" style="width: auto; padding: 12px 30px;">
-                    <i class="fas fa-check"></i> אשר מיקום
+                    <i class="ph-light ph-check"></i> אשר מיקום
                 </button>
             </div>
 
@@ -2056,6 +2188,7 @@
         let currentViewerTitle = '';
         let currentViewerPostIndex = null;
         let postImagesMeta = {};          // { [postId]: { total, loadedUpTo } }
+        let imageObserver  = null;        // IntersectionObserver for lazy image loading
         const IMAGE_BATCH_SIZE = 20;
         let mapPickerInstance = null;
         let mapPickerMarker = null;
@@ -2177,22 +2310,38 @@
 
         // Tab Management
         function switchTab(tab) {
+            if (tab === currentTab) return;
             currentTab = tab;
-            
+
             // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
-            
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.getElementById(`${tab}Tab`).classList.add('active');
-            
-            if (tab === 'map') {
-                setTimeout(() => {
-                    initializeMap();
-                }, 100);
-            } else if (tab === 'calendar') {
-                renderCalendar();
+
+            const outgoing = document.querySelector('.tab-content.active');
+            const incoming = document.getElementById(`${tab}Tab`);
+
+            function onTabVisible() {
+                if (tab === 'map') {
+                    setTimeout(() => { initializeMap(); }, 50);
+                } else if (tab === 'calendar') {
+                    renderCalendar();
+                }
+            }
+
+            if (outgoing && typeof gsap !== 'undefined') {
+                gsap.to(outgoing, { opacity: 0, y: -12, duration: 0.22, ease: 'power2.in',
+                    onComplete: () => {
+                        outgoing.classList.remove('active');
+                        gsap.set(outgoing, { clearProps: 'all' }); // clear inline styles so re-entry animates cleanly
+                        incoming.classList.add('active');
+                        gsap.fromTo(incoming, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out' });
+                        onTabVisible();
+                    }
+                });
+            } else {
+                if (outgoing) outgoing.classList.remove('active');
+                incoming.classList.add('active');
+                onTabVisible();
             }
         }
 
@@ -2538,6 +2687,9 @@
         //      only when that post is visible.  The observer re-triggers the processor
         //      whenever a new post scrolls into view.
         function setupImageLazyLoading() {
+            // Disconnect previous observer so we don't accumulate stale watchers
+            if (imageObserver) { imageObserver.disconnect(); imageObserver = null; }
+
             // Priority order: newest post first
             const loadOrder = posts
                 .map((post, index) => ({ index, dateCreated: post.dateCreated }))
@@ -2587,7 +2739,7 @@
                 processLoadQueue();
             }, { rootMargin: '300px' });
 
-            document.querySelectorAll('.post-card[data-post-index]').forEach(card => {
+            document.querySelectorAll('#feed .post-card[data-post-index]').forEach(card => {
                 observer.observe(card);
             });
 
@@ -2597,7 +2749,7 @@
                 processLoadQueue();
             }
 
-            return observer;
+            imageObserver = observer;
         }
 
         // Fetch one page of images via the RPC function, append to posts[postIndex].images
@@ -2638,19 +2790,23 @@
                     // First batch — full carousel render
                     updatePostImages(postIndex);
                 } else {
-                    // Subsequent batch — append img elements directly to existing carousel
-                    const carousel = document.getElementById(`carousel-${postIndex}`);
-                    if (carousel) {
-                        images.forEach((img, i) => {
-                            const imgEl = document.createElement('img');
-                            imgEl.src   = getImageSrc(img);
-                            imgEl.alt   = 'תמונה';
-                            imgEl.style.cursor = 'pointer';
-                            imgEl.onclick = () => openImageViewer(postIndex, offset + i);
-                            carousel.appendChild(imgEl);
-                        });
-                    }
+                    // Subsequent batch — append img elements to all carousel instances (feed, sidebar, calendar)
+                    ['carousel-', 'sidebar-carousel-', 'cal-carousel-'].forEach(idPrefix => {
+                        const carousel = document.getElementById(`${idPrefix}${postIndex}`);
+                        if (carousel) {
+                            images.forEach((img, i) => {
+                                const imgEl = document.createElement('img');
+                                imgEl.src   = getImageSrc(img);
+                                imgEl.alt   = 'תמונה';
+                                imgEl.style.cursor = 'pointer';
+                                imgEl.onclick = () => openImageViewer(postIndex, offset + i);
+                                carousel.appendChild(imgEl);
+                            });
+                        }
+                    });
                     updateIndicators(postIndex);
+                    updateIndicators(postIndex, 'sidebar-');
+                    updateIndicators(postIndex, 'cal-');
                 }
             } catch (error) {
                 console.error('Error fetching images batch for post', post.id, error);
@@ -2664,7 +2820,7 @@
             const placeholders = document.querySelectorAll('.image-placeholder');
             placeholders.forEach(placeholder => {
                 placeholder.innerHTML = `
-                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: rgba(255,255,255,0.7);"></i>
+                    <i class="ph-light ph-warning" style="font-size: 48px; color: rgba(255,255,255,0.7);"></i>
                     <span style="color: rgba(255,255,255,0.9); font-size: 16px;">כשלון טעינת תמונות</span>
                 `;
                 placeholder.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
@@ -2676,7 +2832,7 @@
             const post = posts[postIndex];
 
             // Update main feed post
-            const postCard = document.querySelector(`[data-post-index="${postIndex}"]`);
+            const postCard = document.querySelector(`#feed [data-post-index="${postIndex}"]`);
             if (postCard) {
                 const container = postCard.querySelector('.carousel-container');
 
@@ -2694,10 +2850,10 @@
                             </div>
                             ${totalCount > 1 ? `
                                 <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1)">
-                                    <i class="fas fa-chevron-right"></i>
+                                    <i class="ph-light ph-caret-right"></i>
                                 </button>
                                 <button class="carousel-nav carousel-next" onclick="changeSlide(${postIndex}, 1)">
-                                    <i class="fas fa-chevron-left"></i>
+                                    <i class="ph-light ph-caret-left"></i>
                                 </button>
                                 ${useCounter ? `
                                     <div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;">${slide + 1} / ${totalCount}</div>
@@ -2717,16 +2873,16 @@
                     if (actionsContainer) {
                         actionsContainer.innerHTML = `
                             <button class="action-btn" onclick="refreshPost(${postIndex})" title="רענן פוסט">
-                                <i class="fas fa-sync-alt"></i>
+                                <i class="ph-light ph-arrows-clockwise"></i>
                             </button>
                             <button class="action-btn" onclick="downloadAllImages(${postIndex})" title="הורדת כל התמונות">
-                                <i class="fas fa-download"></i>
+                                <i class="ph-light ph-download-simple"></i>
                             </button>
                             <button class="action-btn" onclick="openModal(${postIndex})" title="עריכה">
-                                <i class="fas fa-edit"></i>
+                                <i class="ph-light ph-pencil"></i>
                             </button>
                             <button class="action-btn" onclick="deletePost(${postIndex})" title="מחיקה">
-                                <i class="fas fa-trash"></i>
+                                <i class="ph-light ph-trash"></i>
                             </button>
                         `;
                     }
@@ -2738,50 +2894,126 @@
                 }
             }
 
-            // Update sidebar post (if it exists)
-            const sidebarPosts = document.querySelectorAll('.sidebar-post-card');
-            sidebarPosts.forEach(sidebarPost => {
-                // Check if this sidebar post matches the postIndex by checking its onclick attribute
-                if (sidebarPost.getAttribute('onclick')?.includes(`scrollToPost(${postIndex})`)) {
-                    const container = sidebarPost.querySelector('.carousel-container');
+            // Update sidebar post (if it exists in the map sidebar)
+            const sidebarPost = document.querySelector(`#sidebarPosts [data-post-index="${postIndex}"]`);
+            if (sidebarPost) {
+                const container = sidebarPost.querySelector('.carousel-container');
 
-                    if (post.images && post.images.length > 0) {
-                        if (container) {
-                            const meta       = postImagesMeta[post.id];
-                            const totalCount = meta ? meta.total : post.images.length;
-                            const useCounter = totalCount > 10;
+                if (post.images && post.images.length > 0) {
+                    if (container) {
+                        const meta       = postImagesMeta[post.id];
+                        const totalCount = meta ? meta.total : post.images.length;
+                        const slide      = currentSlides['sidebar-' + postIndex] || 0;
 
-                            container.innerHTML = `
-                                <div class="carousel" id="sidebar-carousel-${postIndex}">
-                                    ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
-                                </div>
-                                ${totalCount > 1 ? `
-                                    <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-                                    <button class="carousel-nav carousel-next" onclick="event.stopPropagation(); changeSidebarSlide(${postIndex}, 1)" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%);">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </button>
-                                    ${useCounter ? `
-                                        <div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:13px;">1 / ${totalCount}</div>
-                                    ` : `
-                                        <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
-                                            ${post.images.map((_, i) => `
-                                                <div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${postIndex}, ${i})"></div>
-                                            `).join('')}
-                                        </div>
-                                    `}
-                                ` : ''}
-                            `;
-                        }
-                    } else {
-                        // No images - remove the carousel container entirely
-                        if (container) {
-                            container.remove();
-                        }
+                        container.innerHTML = `
+                            <div class="carousel" id="sidebar-carousel-${postIndex}" style="transform: translateX(${slide * 100}%);">
+                                ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
+                            </div>
+                            ${totalCount > 1 ? `
+                                <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1, 'sidebar-')">
+                                    <i class="ph-light ph-caret-right"></i>
+                                </button>
+                                <button class="carousel-nav carousel-next" onclick="changeSlide(${postIndex}, 1, 'sidebar-')">
+                                    <i class="ph-light ph-caret-left"></i>
+                                </button>
+                                ${totalCount > 10 ? `
+                                    <div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;">${slide + 1} / ${totalCount}</div>
+                                ` : `
+                                    <div class="carousel-indicators">
+                                        ${post.images.map((_, i) => `
+                                            <div class="indicator ${i === slide ? 'active' : ''}" onclick="goToSlide(${postIndex}, ${i}, 'sidebar-')"></div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            ` : ''}
+                        `;
+                    }
+
+                    // Update action buttons to show download button if needed
+                    const actionsContainer = sidebarPost.querySelector('.post-actions');
+                    if (actionsContainer) {
+                        actionsContainer.innerHTML = `
+                            <button class="action-btn" onclick="refreshPost(${postIndex})" title="רענן פוסט">
+                                <i class="ph-light ph-arrows-clockwise"></i>
+                            </button>
+                            <button class="action-btn" onclick="downloadAllImages(${postIndex})" title="הורדת כל התמונות">
+                                <i class="ph-light ph-download-simple"></i>
+                            </button>
+                            <button class="action-btn" onclick="openModal(${postIndex})" title="עריכה">
+                                <i class="ph-light ph-pencil"></i>
+                            </button>
+                            <button class="action-btn" onclick="deletePost(${postIndex})" title="מחיקה">
+                                <i class="ph-light ph-trash"></i>
+                            </button>
+                        `;
+                    }
+                } else {
+                    // No images - remove the carousel container entirely
+                    if (container) {
+                        container.remove();
                     }
                 }
-            });
+            }
+
+            // Update calendar filtered post (if visible)
+            const calPost = document.querySelector(`#filteredPosts [data-post-index="${postIndex}"]`);
+            if (calPost) {
+                const container = calPost.querySelector('.carousel-container');
+
+                if (post.images && post.images.length > 0) {
+                    if (container) {
+                        const meta       = postImagesMeta[post.id];
+                        const totalCount = meta ? meta.total : post.images.length;
+                        const slide      = currentSlides['cal-' + postIndex] || 0;
+
+                        container.innerHTML = `
+                            <div class="carousel" id="cal-carousel-${postIndex}" style="transform: translateX(${slide * 100}%);">
+                                ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${postIndex}, ${imgIndex})" style="cursor: pointer;">`).join('')}
+                            </div>
+                            ${totalCount > 1 ? `
+                                <button class="carousel-nav carousel-prev" onclick="changeSlide(${postIndex}, -1, 'cal-')">
+                                    <i class="ph-light ph-caret-right"></i>
+                                </button>
+                                <button class="carousel-nav carousel-next" onclick="changeSlide(${postIndex}, 1, 'cal-')">
+                                    <i class="ph-light ph-caret-left"></i>
+                                </button>
+                                ${totalCount > 10 ? `
+                                    <div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;">${slide + 1} / ${totalCount}</div>
+                                ` : `
+                                    <div class="carousel-indicators">
+                                        ${post.images.map((_, i) => `
+                                            <div class="indicator ${i === slide ? 'active' : ''}" onclick="goToSlide(${postIndex}, ${i}, 'cal-')"></div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            ` : ''}
+                        `;
+                    }
+
+                    // Update action buttons to show download button
+                    const actionsContainer = calPost.querySelector('.post-actions');
+                    if (actionsContainer) {
+                        actionsContainer.innerHTML = `
+                            <button class="action-btn" onclick="refreshPost(${postIndex})" title="רענן פוסט">
+                                <i class="ph-light ph-arrows-clockwise"></i>
+                            </button>
+                            <button class="action-btn" onclick="downloadAllImages(${postIndex})" title="הורדת כל התמונות">
+                                <i class="ph-light ph-download-simple"></i>
+                            </button>
+                            <button class="action-btn" onclick="openModal(${postIndex})" title="עריכה">
+                                <i class="ph-light ph-pencil"></i>
+                            </button>
+                            <button class="action-btn" onclick="deletePost(${postIndex})" title="מחיקה">
+                                <i class="ph-light ph-trash"></i>
+                            </button>
+                        `;
+                    }
+                } else {
+                    if (container) {
+                        container.remove();
+                    }
+                }
+            }
         }
 
         // Write an array of images to a post in batches via RPC.
@@ -3022,7 +3254,7 @@
                 container.innerHTML = `
                     <h3>פוסטים בתאריך ${selectedDate.toLocaleDateString('he-IL')}</h3>
                     <div class="empty-state">
-                        <i class="fas fa-calendar-times"></i>
+                        <i class="ph-light ph-calendar-x"></i>
                         <h3>אין פוסטים בתאריך זה</h3>
                         <p>נסה לבחור תאריך אחר או צור פוסט חדש</p>
                     </div>
@@ -3031,9 +3263,17 @@
                 container.innerHTML = `
                     <h3>פוסטים בתאריך ${selectedDate.toLocaleDateString('he-IL')} (${postsForDate.length})</h3>
                     <div class="feed">
-                        ${postsForDate.map((post, index) => createPostHTML(post, posts.indexOf(post))).join('')}
+                        ${postsForDate.map((post) => createPostHTML(post, posts.indexOf(post), 'cal-')).join('')}
                     </div>
                 `;
+
+                // Trigger image loading for any posts whose images haven't been fetched yet
+                postsForDate.forEach(post => {
+                    const idx = posts.indexOf(post);
+                    if (!post.images || post.images.length === 0) {
+                        fetchPostImagesBatch(idx, 0);
+                    }
+                });
             }
         }
 
@@ -3105,41 +3345,67 @@
             title.textContent = `פוסטים ב${locationName}`;
             sidebar.classList.add('active');
 
+            // Reset sidebar carousel state for these posts before re-rendering
+            posts.forEach(post => { currentSlides['sidebar-' + post.originalIndex] = 0; });
+
             postsContainer.innerHTML = posts.map(post => createSidebarPostHTML(post, post.originalIndex)).join('');
+
+            // Trigger image loading for any posts whose images haven't been fetched yet
+            posts.forEach(post => {
+                if (!post.images || post.images.length === 0) {
+                    fetchPostImagesBatch(post.originalIndex, 0);
+                }
+            });
         }
 
         function createSidebarPostHTML(post, index) {
             return `
-                <div class="sidebar-post-card" onclick="switchTab('feed'); scrollToPost(${index})">
+                <div class="post-card" data-post-index="${index}" style="position: relative;">
                     <div class="post-header">
-                        <div>
-                            <h3 class="post-title" style="font-size: 16px;">${post.title}</h3>
+                        <div onclick="switchTab('feed'); scrollToPost(${index})" style="cursor: pointer;" title="לחץ כדי לעבור לפוסט">
+                            <h3 class="post-title">${post.title}</h3>
                             <div class="post-date">${post.date}</div>
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-btn" onclick="refreshPost(${index})" title="רענן פוסט">
+                                <i class="ph-light ph-arrows-clockwise"></i>
+                            </button>
+                            ${post.images && post.images.length > 0 ? `
+                                <button class="action-btn" onclick="downloadAllImages(${index})" title="הורדת כל התמונות">
+                                    <i class="ph-light ph-download-simple"></i>
+                                </button>
+                            ` : ''}
+                            <button class="action-btn" onclick="openModal(${index})" title="עריכה">
+                                <i class="ph-light ph-pencil"></i>
+                            </button>
+                            <button class="action-btn" onclick="deletePost(${index})" title="מחיקה">
+                                <i class="ph-light ph-trash"></i>
+                            </button>
                         </div>
                     </div>
 
                     ${post.images === null ? `
-                        <div class="carousel-container" style="position: relative;">
-                            <div class="image-placeholder" style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; gap: 10px;">
-                                <i class="fas fa-image" style="font-size: 48px; color: rgba(255,255,255,0.5);"></i>
-                                <span style="color: rgba(255,255,255,0.9); font-size: 14px;">תמונות בטעינה</span>
+                        <div class="carousel-container">
+                            <div class="image-placeholder" style="height: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; margin: 16px 0; gap: 15px;">
+                                <i class="ph-light ph-image" style="font-size: 64px; color: rgba(255,255,255,0.5);"></i>
+                                <span style="color: rgba(255,255,255,0.9); font-size: 16px;">תמונות בטעינה</span>
                             </div>
                         </div>
                     ` : post.images.length > 0 ? `
-                        <div class="carousel-container" style="position: relative;">
+                        <div class="carousel-container">
                             <div class="carousel" id="sidebar-carousel-${index}">
-                                ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="event.stopPropagation(); openImageViewer(${index}, ${imgIndex})" style="cursor: pointer; height: 200px;">`).join('')}
+                                ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${index}, ${imgIndex})" style="cursor: pointer;">`).join('')}
                             </div>
                             ${(() => { const m = postImagesMeta[post.id]; const t = m ? m.total : post.images.length; return t > 1 ? `
-                                <button class="carousel-nav carousel-prev" onclick="event.stopPropagation(); changeSidebarSlide(${index}, -1)" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%);">
-                                    <i class="fas fa-chevron-right"></i>
+                                <button class="carousel-nav carousel-prev" onclick="changeSlide(${index}, -1, 'sidebar-')">
+                                    <i class="ph-light ph-caret-right"></i>
                                 </button>
-                                <button class="carousel-nav carousel-next" onclick="event.stopPropagation(); changeSidebarSlide(${index}, 1)" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%);">
-                                    <i class="fas fa-chevron-left"></i>
+                                <button class="carousel-nav carousel-next" onclick="changeSlide(${index}, 1, 'sidebar-')">
+                                    <i class="ph-light ph-caret-left"></i>
                                 </button>
-                                ${t > 10 ? `<div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:13px;">1 / ${t}</div>` : `
-                                    <div class="carousel-indicators" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">
-                                        ${post.images.map((_, i) => `<div class="indicator ${i === 0 ? 'active' : ''}" onclick="event.stopPropagation(); goToSidebarSlide(${index}, ${i})"></div>`).join('')}
+                                ${t > 10 ? `<div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;">1 / ${t}</div>` : `
+                                    <div class="carousel-indicators">
+                                        ${post.images.map((_, i) => `<div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${index}, ${i}, 'sidebar-')"></div>`).join('')}
                                     </div>
                                 `}
                             ` : ''; })()}
@@ -3149,15 +3415,15 @@
                     <div class="post-content">
                         ${generateDescriptionHTML(post.description, `sidebar-${index}`)}
                         ${post.location ? `
-                            <div class="post-location" style="pointer-events: none;">
-                                <i class="fas fa-map-marker-alt"></i>
+                            <div class="post-location" onclick="navigateToLocation(${index})" title="לחץ כדי לראות במפה">
+                                <i class="ph-light ph-map-pin"></i>
                                 ${post.location}
                             </div>
                         ` : ''}
                         ${post.hashtags.length > 0 ? `
                             <div class="post-hashtags">
                                 ${post.hashtags.map(hashtag => `
-                                    <span class="hashtag" style="pointer-events: none;">#${hashtag}</span>
+                                    <a href="#" class="hashtag">#${hashtag}</a>
                                 `).join('')}
                             </div>
                         ` : ''}
@@ -3171,13 +3437,14 @@
         }
 
         function scrollToPost(index) {
+            // Delay long enough for GSAP tab-switch animation to finish (~550ms)
             setTimeout(() => {
-                const postElement = document.querySelector(`[data-post-index="${index}"]`);
+                const postElement = document.querySelector(`#feed [data-post-index="${index}"]`);
                 if (postElement) {
                     postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     postElement.style.animation = 'highlight 2s ease-in-out';
                 }
-            }, 100);
+            }, 600);
         }
 
         function navigateToLocation(postIndex) {
@@ -3328,7 +3595,7 @@
                 <div class="post-description">
                     <span id="desc-short-${postIndex}" style="display: inline;">${shortText}...</span>
                     <span id="desc-full-${postIndex}" style="display: none;">${fullText}</span>
-                    <button class="description-toggle" id="toggle-${postIndex}" onclick="toggleDescription(${postIndex})">הצג עוד</button>
+                    <button class="description-toggle" id="toggle-${postIndex}" onclick="toggleDescription('${postIndex}')">הצג עוד</button>
                 </div>
             `;
         }
@@ -3475,6 +3742,14 @@
             }
             
             modal.style.display = 'block';
+
+            // Animate modal content entrance
+            if (typeof gsap !== 'undefined') {
+                gsap.fromTo('.modal-content',
+                    { opacity: 0, y: 32, scale: 0.96 },
+                    { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.5)' }
+                );
+            }
         }
 
         async function loadPostForEdit(post) {
@@ -3504,7 +3779,7 @@
                 const preview = document.getElementById('imagePreview');
                 preview.insertAdjacentHTML('beforeend',
                     '<div id="edit-img-loader" style="width:100%;text-align:center;padding:16px;color:#ff6b9d;">' +
-                    '<i class="fas fa-spinner fa-spin"></i> טוগগן תמונות נוספות (' + selectedImages.length + ' / ' + total + ')…</div>');
+                    '<i class="ph-light ph-circle-notch spin"></i> טוগগן תמונות נוספות (' + selectedImages.length + ' / ' + total + ')…</div>');
 
                 // Fetch every remaining batch
                 let offset = post.images ? post.images.length : 0;
@@ -3565,12 +3840,12 @@
             }
         }
 
-        function createPostHTML(post, index) {
+        function createPostHTML(post, index, idPrefix = '') {
             return `
                 <div class="post-card" data-post-index="${index}" style="position: relative;">
-                    <div class="post-loader" id="post-loader-${index}" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; border-radius: 12px;">
+                    <div class="post-loader" id="${idPrefix}post-loader-${index}" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; border-radius: 12px;">
                         <div style="text-align: center;">
-                            <i class="fas fa-sync fa-spin" style="font-size: 48px; color: #ff6b9d; margin-bottom: 15px;"></i>
+                            <i class="ph-light ph-spinner spin" style="font-size: 48px; color: #ff6b9d; margin-bottom: 15px;"></i>
                             <div style="color: #ff6b9d; font-weight: 600; font-size: 16px;">מרענן פוסט...</div>
                         </div>
                     </div>
@@ -3581,18 +3856,18 @@
                         </div>
                         <div class="post-actions">
                             <button class="action-btn" onclick="refreshPost(${index})" title="רענן פוסט">
-                                <i class="fas fa-sync-alt"></i>
+                                <i class="ph-light ph-arrows-clockwise"></i>
                             </button>
                             ${post.images && post.images.length > 0 ? `
                                 <button class="action-btn" onclick="downloadAllImages(${index})" title="הורדת כל התמונות">
-                                    <i class="fas fa-download"></i>
+                                    <i class="ph-light ph-download-simple"></i>
                                 </button>
                             ` : ''}
                             <button class="action-btn" onclick="openModal(${index})" title="עריכה">
-                                <i class="fas fa-edit"></i>
+                                <i class="ph-light ph-pencil"></i>
                             </button>
                             <button class="action-btn" onclick="deletePost(${index})" title="מחיקה">
-                                <i class="fas fa-trash"></i>
+                                <i class="ph-light ph-trash"></i>
                             </button>
                         </div>
                     </div>
@@ -3600,25 +3875,25 @@
                     ${post.images === null ? `
                         <div class="carousel-container">
                             <div class="image-placeholder" style="height: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; margin: 16px 0; gap: 15px;">
-                                <i class="fas fa-image" style="font-size: 64px; color: rgba(255,255,255,0.5);"></i>
+                                <i class="ph-light ph-image" style="font-size: 64px; color: rgba(255,255,255,0.5);"></i>
                                 <span style="color: rgba(255,255,255,0.9); font-size: 16px;">תמונות בטעינה</span>
                             </div>
                         </div>
                     ` : post.images.length > 0 ? `
                         <div class="carousel-container">
-                            <div class="carousel" id="carousel-${index}">
+                            <div class="carousel" id="${idPrefix}carousel-${index}">
                                 ${post.images.map((img, imgIndex) => `<img src="${getImageSrc(img)}" alt="תמונה" onclick="openImageViewer(${index}, ${imgIndex})" style="cursor: pointer;">`).join('')}
                             </div>
                             ${(() => { const m = postImagesMeta[post.id]; const t = m ? m.total : post.images.length; return t > 1 ? `
-                                <button class="carousel-nav carousel-prev" onclick="changeSlide(${index}, -1)">
-                                    <i class="fas fa-chevron-right"></i>
+                                <button class="carousel-nav carousel-prev" onclick="changeSlide(${index}, -1, '${idPrefix}')">
+                                    <i class="ph-light ph-caret-right"></i>
                                 </button>
-                                <button class="carousel-nav carousel-next" onclick="changeSlide(${index}, 1)">
-                                    <i class="fas fa-chevron-left"></i>
+                                <button class="carousel-nav carousel-next" onclick="changeSlide(${index}, 1, '${idPrefix}')">
+                                    <i class="ph-light ph-caret-left"></i>
                                 </button>
                                 ${t > 10 ? `<div class="slide-counter" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;">1 / ${t}</div>` : `
                                     <div class="carousel-indicators">
-                                        ${post.images.map((_, i) => `<div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${index}, ${i})"></div>`).join('')}
+                                        ${post.images.map((_, i) => `<div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${index}, ${i}, '${idPrefix}')"></div>`).join('')}
                                     </div>
                                 `}
                             ` : ''; })()}
@@ -3626,10 +3901,10 @@
                     ` : ''}
 
                     <div class="post-content">
-                        ${generateDescriptionHTML(post.description, index)}
+                        ${generateDescriptionHTML(post.description, `${idPrefix}${index}`)}
                         ${post.location ? `
                             <div class="post-location" onclick="navigateToLocation(${index})" title="לחץ כדי לראות במפה">
-                                <i class="fas fa-map-marker-alt"></i>
+                                <i class="ph-light ph-map-pin"></i>
                                 ${post.location}
                             </div>
                         ` : ''}
@@ -3682,8 +3957,8 @@
                     delete postImagesMeta[data.id];
                     currentSlides[postIndex] = 0;
 
-                    // Re-render the post card (shows placeholder while images load)
-                    const postCard = document.querySelector(`[data-post-index="${postIndex}"]`);
+                    // Re-render the feed post card (shows placeholder while images load)
+                    const postCard = document.querySelector(`#feed [data-post-index="${postIndex}"]`);
                     if (postCard) {
                         const newHTML = createPostHTML(posts[postIndex], postIndex);
                         const tempDiv = document.createElement('div');
@@ -3799,7 +4074,7 @@
                 if (!isLoadingPosts) {
                     feed.innerHTML = `
                         <div class="empty-state">
-                            <i class="fas fa-camera"></i>
+                            <i class="ph-light ph-camera"></i>
                             <h3>אין פוסטים עדיין</h3>
                             <p>התחל ליצור את הפוסט הראשון שלך!</p>
                             <button class="add-post-btn" onclick="openModal()">
@@ -3831,67 +4106,81 @@
             posts.forEach((_, index) => {
                 currentSlides[index] = 0;
             });
+
+            // Staggered card entrance animation (feed only — don't touch sidebar cards)
+            if (typeof gsap !== 'undefined') {
+                gsap.fromTo('#feed .post-card',
+                    { opacity: 0, y: 24, scale: 0.97 },
+                    { opacity: 1, y: 0, scale: 1, duration: 0.45, stagger: 0.07, ease: 'back.out(1.4)' }
+                );
+            }
+
+            // Re-attach the lazy-image observer to the fresh DOM nodes so any
+            // placeholder cards get their images fetched automatically.
+            setupImageLazyLoading();
         }
 
 
         // Carousel Functions
-        function changeSlide(postIndex, direction) {
-            if (!currentSlides[postIndex]) currentSlides[postIndex] = 0;
+        function changeSlide(postIndex, direction, prefix = '') {
+            const stateKey = prefix + postIndex;
+            if (!currentSlides[stateKey]) currentSlides[stateKey] = 0;
 
             const post        = posts[postIndex];
             const meta        = post && postImagesMeta[post.id];
             const totalImages = meta ? meta.total : (post && post.images ? post.images.length : 0);
             const loadedCount = post && post.images ? post.images.length : 0;
 
-            let newSlide = currentSlides[postIndex] + direction;
+            let newSlide = currentSlides[stateKey] + direction;
             if (newSlide >= totalImages) newSlide = 0;
             else if (newSlide < 0)       newSlide = totalImages - 1;
 
             // If the target slide hasn't been fetched yet, load the next batch first
             if (newSlide >= loadedCount && post) {
                 fetchPostImagesBatch(postIndex, loadedCount).then(() => {
-                    currentSlides[postIndex] = newSlide;
-                    const carousel = document.getElementById(`carousel-${postIndex}`);
+                    currentSlides[stateKey] = newSlide;
+                    const carousel = document.getElementById(`${prefix}carousel-${postIndex}`);
                     if (carousel) carousel.style.transform = `translateX(${newSlide * 100}%)`;
-                    updateIndicators(postIndex);
+                    updateIndicators(postIndex, prefix);
                 });
                 return;
             }
 
-            currentSlides[postIndex] = newSlide;
-            const carousel = document.getElementById(`carousel-${postIndex}`);
+            currentSlides[stateKey] = newSlide;
+            const carousel = document.getElementById(`${prefix}carousel-${postIndex}`);
             if (carousel) carousel.style.transform = `translateX(${newSlide * 100}%)`;
-            updateIndicators(postIndex);
+            updateIndicators(postIndex, prefix);
         }
 
-        function goToSlide(postIndex, slideIndex) {
+        function goToSlide(postIndex, slideIndex, prefix = '') {
+            const stateKey = prefix + postIndex;
             const post        = posts[postIndex];
             const loadedCount = post && post.images ? post.images.length : 0;
 
             if (slideIndex >= loadedCount && post) {
                 fetchPostImagesBatch(postIndex, loadedCount).then(() => {
-                    currentSlides[postIndex] = slideIndex;
-                    const carousel = document.getElementById(`carousel-${postIndex}`);
+                    currentSlides[stateKey] = slideIndex;
+                    const carousel = document.getElementById(`${prefix}carousel-${postIndex}`);
                     if (carousel) carousel.style.transform = `translateX(${slideIndex * 100}%)`;
-                    updateIndicators(postIndex);
+                    updateIndicators(postIndex, prefix);
                 });
                 return;
             }
 
-            currentSlides[postIndex] = slideIndex;
-            const carousel = document.getElementById(`carousel-${postIndex}`);
+            currentSlides[stateKey] = slideIndex;
+            const carousel = document.getElementById(`${prefix}carousel-${postIndex}`);
             if (carousel) carousel.style.transform = `translateX(${slideIndex * 100}%)`;
-            updateIndicators(postIndex);
+            updateIndicators(postIndex, prefix);
         }
 
-        function updateIndicators(postIndex) {
-            const carouselEl = document.getElementById(`carousel-${postIndex}`);
+        function updateIndicators(postIndex, prefix = '') {
+            const carouselEl = document.getElementById(`${prefix}carousel-${postIndex}`);
             if (!carouselEl) return;
             const container  = carouselEl.parentElement;
             const post       = posts[postIndex];
             const meta       = post && postImagesMeta[post.id];
             const total      = meta ? meta.total : (post && post.images ? post.images.length : 0);
-            const slide      = currentSlides[postIndex] || 0;
+            const slide      = currentSlides[prefix + postIndex] || 0;
 
             if (total > 10) {
                 // Counter mode
@@ -4354,8 +4643,7 @@
             // Load all posts
             posts = [];
             await loadPostsFromSupabase();
-            renderPosts();
-            setupImageLazyLoading();
+            renderPosts(); // internally calls setupImageLazyLoading()
 
             if (currentTab === 'calendar') {
                 renderCalendar();
@@ -4373,7 +4661,7 @@
             const userInfo = document.getElementById('userInfo');
             if (currentUser) {
                 const displayName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
-                userInfo.innerHTML = `<i class="fas fa-user"></i> ${displayName}`;
+                userInfo.innerHTML = `<i class="ph-light ph-user"></i> ${displayName}`;
             }
         }
 
@@ -4430,6 +4718,18 @@
             return errorMessages[error.message] || error.message || 'אירעה שגיאה, נסה שוב';
         }
 
+        // Ripple effect on button click
+        function addRipple(e) {
+            const btn = e.currentTarget;
+            const ripple = document.createElement('span');
+            ripple.className = 'ripple';
+            const rect = btn.getBoundingClientRect();
+            ripple.style.left  = (e.clientX - rect.left)  + 'px';
+            ripple.style.top   = (e.clientY - rect.top)   + 'px';
+            btn.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 620);
+        }
+
         // Initialize app with authentication check
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialize Supabase client using the saved library reference
@@ -4452,6 +4752,28 @@
             setupAuthListeners();
             initializeCalendar();
             populateDefaultImages();
+
+            // GSAP: floating button idle glow pulse
+            if (typeof gsap !== 'undefined') {
+                gsap.to('.floating-add-btn', {
+                    boxShadow: '0 8px 32px rgba(255,107,157,0.65)',
+                    repeat: -1, yoyo: true, duration: 2.2, ease: 'sine.inOut'
+                });
+            }
+
+            // Ripple bindings on static buttons
+            document.querySelectorAll('.submit-btn, .floating-add-btn').forEach(el =>
+                el.addEventListener('click', addRipple)
+            );
+            // Ripple on tab buttons
+            document.querySelectorAll('.tab-btn').forEach(el =>
+                el.addEventListener('click', addRipple)
+            );
+            // Ripple on dynamically created action buttons (event delegation)
+            document.getElementById('feed').addEventListener('click', function(e) {
+                const btn = e.target.closest('.action-btn');
+                if (btn) addRipple({ currentTarget: btn, clientX: e.clientX, clientY: e.clientY });
+            });
 
             await checkAuthStatus();
             // Posts will be loaded in onAuthSuccess after authentication
